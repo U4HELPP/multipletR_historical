@@ -44,6 +44,18 @@ __10X Genomics Information:__
 
 * R (version dependency?)
 
+### Git Team Workflow
+
+All team members should adhere to the following protocol to keep the main branch clean and functional.
+
+* Create your own development branch to work on.
+* Update your development branch as needed until ready to merge with main.
+* Create a pull request to merge with main branch and resolve any conflicts.
+* Merge with main branch and tag the commit with a minor version number.
+* Notify team to update their local repositories.
+* Create a new dev branch, or continue editing on your existing branch.
+* Tag major releases as needed, or as new functionality is added.
+
 ### Installing (TBD)
 
 * How/where to download your program
