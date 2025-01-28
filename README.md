@@ -22,6 +22,8 @@ __Google Drive:__
 
 * [Agenda and Meeting Notes](https://docs.google.com/document/d/1vdZ5HJRoQ1ginSqaSBghWv4SpT6nFEB82Rzk9n_Y9yA/edit?tab=t.0)
 
+* [Orientation README](https://docs.google.com/document/d/1mLB0nnOHCfAuc1lmICUKSK0zI3Kq96tzG9NovhcZeVk/edit?tab=t.0)
+
 * Results are stored and shared on Google Drive in the following directory: [0_CHarrell/2023_U4HELPP_LivingPDXProgram/Data/scRNASeq/MESSY-Multiplet_Evaluation_for_ScSeq_barnYard_samples](https://drive.google.com/drive/u/0/folders/18DVetp2fzvMKtdTw3CEFbqsp3y_YA_C1)
 
 __Apollo:__
@@ -35,7 +37,6 @@ __10X Genomics Information:__
 * [Manual Loupe classification method if automated method fails.](https://kb.10xgenomics.com/hc/en-us/articles/28552478030093-Species-Cell-Assignments-on-Loupe-for-Barnyard-samples)
 
 * [Benchmark 10X Datasets](https://www.10xgenomics.com/datasets?configure%5BhitsPerPage%5D=50&configure%5BmaxValuesPerFacet%5D=1000&refinementList%5Bplatform%5D%5B0%5D=Chromium%20Single%20Cell&refinementList%5Bspecies%5D%5B0%5D=Human%2C%20Mouse)
-
 
 
 ## Getting Started
@@ -55,19 +56,6 @@ All team members should adhere to the following protocol to keep the main branch
 * Notify team to update their local repositories.
 * Create a new dev branch, or continue editing on your existing branch.
 * Tag major releases as needed, or as new functionality is added.
-
-### Installing (TBD)
-
-* How/where to download your program
-* Any modifications needed to be made to files/folders
-
-### Executing program (TBD)
-
-* How to run the program
-* Step-by-step bullets
-```
-code blocks for commands
-```
 
 
 ## Authors
