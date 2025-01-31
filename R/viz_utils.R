@@ -13,41 +13,6 @@
 #'
 #'
 
-library("dplyr")
-library("ggplot2")
-library("reshape2")
-library("gridExtra")
-
-
-#' @title Prepare GEM Counts for Analysis and Plotting
-#' @description This function takes a data frame of read counts from a 10X GEM file and adds additional columns for analysis and plotting.
-#' @param gem_df A data frame containing read counts with columns `barcode`, `GRCh38`, `mm10` and `call`.
-#' @return A data frame with the following additional columns:
-#' \itemize{
-#'   \item \code{HumanDiff}: Difference between human (GRCh38) and mouse (mm10) read counts.
-#'   \item \code{MouseDiff}: Difference between mouse (mm10) and human (GRCh38) read counts.
-#'   \item \code{percentMouse}: Proportion of reads that map to mouse (mm10).
-#'   \item \code{totalReads}: Total number of reads (sum of GRCh38 and mm10).
-#'   \item \code{totalReadsLog}: Logarithm of the total number of reads.
-#' }
-#' @examples
-#' \dontrun{
-#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), mm10 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
-#' result <- prep_gem_counts(gem_df)
-#' print(result)
-#' }
-#' @export
-prep_gem_counts <- function(gem_df){
-  gem_df$HumanDiff <- gem_df$GRCh38 - gem_df$mm10
-  gem_df$MouseDiff <- gem_df$mm10 - gem_df$GRCh38
-  gem_df$percentMouse <- gem_df$mm10/(gem_df$mm10 + gem_df$GRCh38)
-  gem_df$totalReads <- gem_df$mm10 + gem_df$GRCh38
-  gem_df$totalReadsLog <- log(gem_df$mm10 + gem_df$GRCh38)
-
-  return(gem_df)
-}
-
-
 
 
 #' @title Linear Percent Scatter Plot
@@ -70,12 +35,14 @@ prep_gem_counts <- function(gem_df){
 #' plot <- linear_percent_scatter(gem_df)
 #' print(plot)
 #' }
+#' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
+#' @importFrom scales alpha
 #' @export
-linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percentMouse", color = "call",
+linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percentMouse", color = "AssignedSpecies",
                                    title = "Linear Percent Scatter Plot", umi_cutoff = NA, species_cutoff = NA,
                                    Xaxislab = "Total UMI", Yaxislab = "Percent Mouse", colormapping = NA){
   if(all(is.na(colormapping))){
-    colormapping <- c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))
+    colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))
   }
   p1 <- ggplot(gem_df, aes_string(x = Xdata, y = Ydata, color = color)) +
     geom_point() +  # Add points
@@ -112,6 +79,7 @@ linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percen
 #' @param species_cutoff A numeric value specifying the species percent cutoff for horizontal dashed lines. Default is NA (no lines). If greater than 1, it will be divided by 100.
 #' @param Xaxislab A string specifying the label for the x-axis. Default is "Total UMI".
 #' @param Yaxislab A string specifying the label for the y-axis. Default is "Percent Mouse".
+#' @param colormapping A named vector specifying the colors for the different groups. Default is NA, which uses predefined colors.
 #' @return A ggplot object representing the scatter plot.
 #' @examples
 #' \dontrun{
@@ -120,203 +88,125 @@ linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percen
 #' plot <- semilog_percent_scatter(gem_df)
 #' print(plot)
 #' }
+#' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
+#' @importFrom scales alpha
 #' @export
-semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "percentMouse", color = "call",
+semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "percentMouse", color = "AssignedSpecies",
                                    title = "Semi-Log Percent Scatter Plot", umi_cutoff = NA, species_cutoff = NA,
-                                   Xaxislab = "Total UMI", Yaxislab = "Percent Mouse"){
+                                   Xaxislab = "Total UMI (Natural Log)", Yaxislab = "Percent Mouse", colormapping = NA){
 
-  p1 <- ggplot(gem_df, aes_string(x = Xdata, y = Ydata, color = color)) +
+  if(all(is.na(colormapping))){
+    colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))
+  }
+
+  p2 <- ggplot(gem_df, aes_string(x = Xdata, y = Ydata, color = color)) +
     geom_point() +  # Add points
-    scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))) +  # Specify colors
+    scale_color_manual(values = colormapping) +  # Specify colors
     labs(title = title,
          x = Xaxislab,
          y = Yaxislab) +
     theme_minimal()  # Optional: use a minimal theme
 
   if(!is.na(umi_cutoff)){
-    p1 <- p1 + geom_vline(xintercept = umi_cutoff, linetype = "dashed", color = "grey", size = .75)
+    p2 <- p2 + geom_vline(xintercept = log(umi_cutoff), linetype = "dashed", color = "grey", size = .75)
   }
   if(!is.na(species_cutoff)){
     if(species_cutoff>1){
       species_cutoff <- species_cutoff/100
     }
-    p1 <- p1 + geom_hline(yintercept = species_cutoff, linetype = "dashed", color = "darkgrey", size = .75) +
+    p2 <- p2 + geom_hline(yintercept = species_cutoff, linetype = "dashed", color = "darkgrey", size = .75) +
       geom_hline(yintercept = 1-species_cutoff, linetype = "dashed", color = "darkgrey", size = .75)
   }
 
-  return(p1)
+  return(p2)
+}
+
+
+
+#' @title Species Density Plot
+#' @description This function creates a density plot of aligned read counts for a specified assigned species. The data frame must be processed by `prep_gem_counts()` first.
+#' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
+#' @param assigned_species A string specifying the assigned species to plot. Default is "Human".
+#' @param refGenome_linecol A named vector specifying the line colors for the reference genomes. Default is NA, which uses predefined colors.
+#' @param refGenome_fillcol A named vector specifying the fill colors for the reference genomes. Default is NA, which uses predefined colors.
+#' @param title A string specifying the title of the plot. Default is "Assigned Species: Human".
+#' @param Xaxislab A string specifying the label for the x-axis. Default is "Aligned Read Counts (Natural Log)".
+#' @param Yaxislab A string specifying the label for the y-axis. Default is "Cell Density".
+#' @return A ggplot object representing the density plot.
+#' @examples
+#' \dontrun{
+#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), mm10 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
+#' gem_df <- prep_gem_counts(gem_df)
+#' plot <- species_density_plot(gem_df, assigned_species = "Human")
+#' print(plot)
+#' }
+#' @importFrom ggplot2 ggplot aes geom_density scale_color_manual scale_fill_manual theme_classic labs geom_vline
+#' @importFrom reshape2 melt
+#' @importFrom dplyr %>%
+#' @importFrom scales alpha
+#' @export
+species_density_plot <- function(gem_df, assigned_species = "Human",
+                                  refGenome_linecol = NA, refGenome_fillcol = NA,
+                                  title = paste("Assigned Species:", assigned_species),
+                                  Xaxislab = "Aligned Read Counts (Natural Log)",
+                                  Yaxislab = "Cell Density"){
+
+  gem_df_melt <- as.data.frame(reshape2::melt(gem_df[,c("GRCh38", "mm10","AssignedSpecies")]))
+  names(gem_df_melt) <- c("AssignedSpecies", "RefGenome", "AlignedCount")
+
+  if(all(is.na(refGenome_linecol))){
+    refGenome_linecol <- c("GRCh38" = "royalblue", "mm10" = "forestgreen")
+  }
+  if(all(is.na(refGenome_fillcol))){
+    refGenome_fillcol <- c("GRCh38" = "royalblue", "mm10" = "forestgreen")
+  }
+
+  # Visualize the number UMIs/transcripts per cell
+  p3 <- gem_df_melt[gem_df_melt$AssignedSpecies==assigned_species,] %>%
+    ggplot(aes(color=RefGenome, x=log(AlignedCount), fill= RefGenome, color= RefGenome)) +
+    geom_density(alpha = 0.2) +
+    scale_color_manual(values = refGenome_linecol) +  # Specify colors
+    scale_fill_manual(values = refGenome_fillcol) +  # Specify colors
+    theme_classic() +
+    labs(title = title,
+         x = Xaxislab,
+         y = Yaxislab) +
+    geom_vline(xintercept = 25)
+
+  return(p3)
+}
+
+
+#' @title GEM Classification Summary
+#' @description This function creates a summary plot of GEM classification, including linear and semi-log scatter plots and density plots for human, mouse, and multiplet assigned species. The data frame must be processed by `prep_gem_counts()` first.
+#' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
+#' @param title A string specifying the title of the summary plot. Default is "GEM_Classification_Summary".
+#' @param umi_cutoff A numeric value specifying the UMI cutoff for vertical dashed lines in the scatter plots. Default is 500 UMI.
+#' @param species_cutoff A numeric value specifying the species percent cutoff for horizontal dashed lines in the scatter plots. Default is .10. If greater than 1, it will be divided by 100.
+#' @return A grid of ggplot objects representing the summary plot.
+#' @examples
+#' \dontrun{
+#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), mm10 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
+#' gem_df <- prep_gem_counts(gem_df)
+#' summary_plot <- gem_classification_summary(gem_df)
+#' print(summary_plot)
+#' }
+#' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
+#' @importFrom scales alpha
+#' @importFrom gridExtra grid.arrange
+#' @export
+gem_classification_summary <- function(gem_df, title="GEM_Classification_Summary", umi_cutoff=500, species_cutoff=.10){
+
+  p1 <- linear_percent_scatter(gem_df, umi_cutoff = umi_cutoff, species_cutoff = species_cutoff)
+  p2 <- semilog_percent_scatter(gem_df, umi_cutoff = umi_cutoff, species_cutoff = species_cutoff)
+  p3_human <- species_density_plot(gem_df, assigned_species = "Human")
+  p3_mouse <- species_density_plot(gem_df, assigned_species = "Mouse")
+  p3_multiplet <- species_density_plot(gem_df, assigned_species = "Multiplet")
+  summary_plot <- grid.arrange(p1, p2, p3_human, p3_mouse, p3_multiplet, ncol = 2)
+
+  return(summary_plot)
 }
 
 
 
 
-############# The following function is still on its way to being converted to individual plotting functions as above.
-multiplet_plots <- function(gem_df, title, save_dir){
-
-  gem_df <- prep_gem_counts(gem_df)
-
-  log_max = max(gem_df$totalReadsLog)
-  gem_df$graft_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=.25, y2=.10, x_max=log_max)
-  gem_df$host_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=.75, y2=.90, x_max=log_max)
-  gem_df$MESSY_Call <- assign_new_call(gem_df[,c("percentMouse", "graft_cutpoint_log", "host_cutpoint_log")])
-
-  graft_line = get_custom_slope(y1=.25, y2=.10, x_max=log_max)
-  host_line = get_custom_slope(y1=.75, y2=.90, x_max=log_max)
-
-  p1 <- ggplot(gem_df, aes(x = totalReads, y = percentMouse, color = x10X_Call)) +
-    geom_point() +  # Add points
-    scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))) +  # Specify colors
-    geom_vline(xintercept = 500, linetype = "dashed", color = "grey", size = .75) +
-    geom_hline(yintercept = .10, linetype = "dashed", color = "darkgrey", size = .75) +
-    geom_hline(yintercept = .90, linetype = "dashed", color = "darkgrey", size = .75) +
-    #geom_hline(yintercept = .25, linetype = "dashed", color = "black", size = .75) +
-    #geom_hline(yintercept = .75, linetype = "dashed", color = "black", size = .75) +
-    #geom_abline(slope = graft_line["slope"], intercept = graft_line["y-intercept"], color = "red", linetype = "dashed", size = .75) +  # Add sloped line
-    #geom_abline(slope = host_line["slope"], intercept = host_line["y-intercept"], color = "red", linetype = "dashed", size = .75) +  # Add sloped line
-
-    labs(title = paste0("10X GEM Multiplet Calls: ", title),
-         x = "Total Number of Reads in Cell",
-         y = "Percent Mouse") +
-    theme_minimal()  # Optional: use a minimal theme
-
-  p2 <- ggplot(gem_df, aes(x = totalReadsLog, y = percentMouse, color = x10X_Call)) +
-    geom_point() +  # Add points
-    scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))) +  # Specify colors
-    geom_vline(xintercept = log(500), linetype = "dashed", color = "grey", size = .75) +
-    geom_hline(yintercept = .10, linetype = "dashed", color = "darkgrey", size = .75) +
-    geom_hline(yintercept = .90, linetype = "dashed", color = "darkgrey", size = .75) +
-    #geom_hline(yintercept = .25, linetype = "dashed", color = "black", size = .75) +
-    #geom_hline(yintercept = .75, linetype = "dashed", color = "black", size = .75) +
-
-    labs(title = paste0("10X GEM Multiplet Calls: ", title),
-         x = "Log of Total Number of Reads in Cell",
-         y = "Percent Mouse") +
-    theme_minimal()  # Optional: use a minimal theme
-
-  p11 <- ggplot(gem_df, aes(x = totalReads, y = percentMouse, color = MESSY_Call)) +
-    geom_point() +  # Add points
-    scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5))) +  # Specify colors
-    geom_vline(xintercept = 500, linetype = "dashed", color = "grey", size = .75) +
-    geom_hline(yintercept = .10, linetype = "dashed", color = "darkgrey", size = .75) +
-    geom_hline(yintercept = .90, linetype = "dashed", color = "darkgrey", size = .75) +
-    #geom_hline(yintercept = .25, linetype = "dashed", color = "black", size = .75) +
-    #geom_hline(yintercept = .75, linetype = "dashed", color = "black", size = .75) +
-    labs(title = paste0("Olex Multiplet Calls: ", title),
-         x = "Total Number of Reads in Cell",
-         y = "Percent Mouse") +
-    theme_minimal()  # Optional: use a minimal theme
-
-  p22 <- ggplot(gem_df, aes(x = totalReadsLog, y = percentMouse, color = MESSY_Call)) +
-    geom_point() +  # Add points
-    scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5))) +  # Specify colors
-    geom_vline(xintercept = log(500), linetype = "dashed", color = "grey", size = .75) +
-    geom_hline(yintercept = .10, linetype = "dashed", color = "darkgrey", size = .75) +
-    geom_hline(yintercept = .90, linetype = "dashed", color = "darkgrey", size = .75) +
-    #geom_hline(yintercept = .25, linetype = "dashed", color = "black", size = .75) +
-    #geom_hline(yintercept = .75, linetype = "dashed", color = "black", size = .75) +
-    geom_abline(slope = graft_line["slope"], intercept = graft_line["y-intercept"], color = "black", linetype = "dashed", size = .75) +  # Add sloped line
-    geom_abline(slope = host_line["slope"], intercept = host_line["y-intercept"], color = "black", linetype = "dashed", size = .75) +  # Add sloped line
-
-    labs(title = paste0("Olex Multiplet Calls: ", title),
-         x = "Log of Total Number of Reads in Cell",
-         y = "Percent Mouse") +
-    theme_minimal()  # Optional: use a minimal theme
-
-  gem_df_melt <- as.data.frame(reshape2::melt(gem_df[,c("GRCh38_count", "mm10_count","x10X_Call")]))
-  names(gem_df_melt) <- c("CellCall", "Aligned2Ref", "ReadCount")
-
-  # Visualize the number UMIs/transcripts per cell
-  p3 <- gem_df_melt[gem_df_melt$CellCall=="GRCh38",] %>%
-    ggplot(aes(color=Aligned2Ref, x=log(ReadCount), fill= Aligned2Ref, color= Aligned2Ref)) +
-    geom_density(alpha = 0.2) +
-    scale_color_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "forestgreen")) +  # Specify colors
-    scale_fill_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "forestgreen")) +  # Specify colors
-    #geom_histogram()
-    theme_classic() +
-    ylab("GRCh38 Cell Count Density") +
-    xlab("Log Read Count") +
-    geom_vline(xintercept = 25)
-
-
-  p4 <- gem_df_melt[gem_df_melt$CellCall=="mm10",] %>%
-    ggplot(aes(color=Aligned2Ref, x=log(ReadCount), fill= Aligned2Ref, color= Aligned2Ref)) +
-    geom_density(alpha = 0.2) +
-    scale_color_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "forestgreen")) +  # Specify colors
-    scale_fill_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "forestgreen")) +  # Specify colors
-    #geom_histogram()
-    theme_classic() +
-    ylab("mm10 Cell Count Density") +
-    xlab("Log Read Count") +
-    geom_vline(xintercept = 25)
-
-  p5 <- gem_df_melt[gem_df_melt$CellCall=="Multiplet",] %>%
-    ggplot(aes(color=Aligned2Ref, x=log(ReadCount), fill= Aligned2Ref, color= Aligned2Ref)) +
-    geom_density(alpha = 0.2) +
-    scale_color_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "forestgreen")) +  # Specify colors
-    scale_fill_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "forestgreen")) +  # Specify colors
-    #geom_histogram()
-    theme_classic() +
-    ylab("Multiplet Cell Count Density") +
-    xlab("Log Read Count") +
-    geom_vline(xintercept = 25)
-
-
-  gem_df_melt2 <- as.data.frame(reshape2::melt(gem_df[,c("GRCh38_count","mm10_count","MESSY_Call")]))
-  names(gem_df_melt2) <- c("OlexCellCall", "Aligned2Ref", "ReadCount")
-
-  # Visualize the number UMIs/transcripts per cell
-  p33 <- gem_df_melt2[gem_df_melt2$OlexCellCall=="GRCh38",] %>%
-    ggplot(aes(color=Aligned2Ref, x=log(ReadCount), fill= Aligned2Ref, color= Aligned2Ref)) +
-    geom_density(alpha = 0.2) +
-    scale_color_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "red3")) +  # Specify colors
-    scale_fill_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "red3")) +  # Specify colors
-    #geom_histogram()
-    theme_classic() +
-    ylab("Human Cell Count Density") +
-    xlab("Log Read Count") +
-    geom_vline(xintercept = 25)
-
-
-  p44 <- gem_df_melt2[gem_df_melt2$OlexCellCall=="mm10",] %>%
-    ggplot(aes(color=Aligned2Ref, x=log(ReadCount), fill= Aligned2Ref, color= Aligned2Ref)) +
-    geom_density(alpha = 0.2) +
-    scale_color_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "red3")) +  # Specify colors
-    scale_fill_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "red3")) +  # Specify colors
-    #geom_histogram()
-    theme_classic() +
-    ylab("Mouse Cell Count Density") +
-    xlab("Log Read Count") +
-    geom_vline(xintercept = 25)
-
-  p55 <- gem_df_melt2[gem_df_melt2$OlexCellCall=="Multiplet",] %>%
-    ggplot(aes(color=Aligned2Ref, x=log(ReadCount), fill= Aligned2Ref, color= Aligned2Ref)) +
-    geom_density(alpha = 0.2) +
-    scale_color_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "red3")) +  # Specify colors
-    scale_fill_manual(values = c("GRCh38_count" = "royalblue", "mm10_count" = "red3")) +  # Specify colors
-    #geom_histogram()
-    theme_classic() +
-    ylab("Multiplet Cell Count Density") +
-    xlab("Log Read Count") +
-    geom_vline(xintercept = 25)
-
-  png(filename = paste0("MultipletCalls_", title, ".png"), width = 1000, height = 1300)
-  grid.arrange(p1, p11, p2, p22, p3, p33, p4, p44, p5, p55, ncol = 2)  # Arrange plots in 1 row and 2 columns
-  dev.off()
-
-  gem_df$barcode <- row.names(gem_df)
-  for_gem_file <- gem_df[,c("barcode", "GRCh38_count", "mm10_count", "MESSY_Call")]
-  names(for_gem_file) <- c("barcode", "GRCh38", "mm10", "call")
-
-  write.csv(gem_df, file=paste0("MultipletCalls_Matrix_", title, ".csv"), quote = FALSE, row.names = FALSE)
-  write.csv(for_gem_file, file=paste0(save_dir, "gem_classification.csv"), quote = FALSE, row.names = FALSE)
-
-  # write out Loupe Annotations
-  write.csv(gem_df[,c("barcode","x10X_Call")], file=paste0(title, "_10x_gem_class_Annotations.csv"), quote = FALSE, row.names = FALSE)
-  write.csv(gem_df[,c("barcode","MESSY_Call")], file=paste0(title, "_MESSY_class_Annotations.csv"), quote = FALSE, row.names = FALSE)
-
-
-
-
-  #return(gem_df)
-
-}
