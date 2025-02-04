@@ -36,28 +36,57 @@ assign_new_call <- function(df){
 }
 
 
+find_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10){
 
-
-
-
-
-
-gem_df <- prep_gem_counts(gem_data)
-
-find_semilog_threshold <- function(gem_df){
+  if(graft_max>1){
+    graft_max <- graft_max/100
+  }
+  if(graft_min>1){
+    graft_min <- graft_min/100
+  }
 
   log_max = max(gem_df$totalReadsLog)
-  gem_df$graft_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=.25, y2=.10, x_max=log_max)
-  gem_df$host_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=.75, y2=.90, x_max=log_max)
+  gem_df$graft_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=graft_max, y2=graft_min, x_max=log_max)
+  gem_df$host_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=1-graft_max, y2=1-graft_min, x_max=log_max)
   gem_df$SemiLog_Call <- assign_new_call(gem_df[,c("percentMouse", "graft_cutpoint_log", "host_cutpoint_log")])
-
-  graft_line = get_custom_slope(y1=.25, y2=.10, x_max=log_max)
-  host_line = get_custom_slope(y1=.75, y2=.90, x_max=log_max)
+  gem_df$SemiLogSpecies <- ifelse(gem_df$SemiLog_Call == "GRCh38", "Human",
+                                   ifelse(gem_df$SemiLog_Call == "mm10", "Mouse",
+                                          ifelse(gem_df$SemiLog_Call == "Multiplet", "Multiplet", NA)))
 
   return(gem_df)
 }
 
+plot_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10, colormapping=NA){
 
+  if(graft_max>1){
+    graft_max <- graft_max/100
+  }
+  if(graft_min>1){
+    graft_min <- graft_min/100
+  }
+  if(all(is.na(colormapping))){
+    colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5))
+  }
+
+  p <- semilog_percent_scatter(gem_df, Xdata = "totalReadsLog", Ydata = "percentMouse", color = "SemiLogSpecies",
+                                      title = "Semi-Log Percent Scatter Plot", umi_cutoff = 500, species_cutoff = 10,
+                                      Xaxislab = "Total UMI (Natural Log)", Yaxislab = "Percent Mouse", colormapping = colormapping)
+
+
+  log_max = max(gem_df$totalReadsLog)
+  graft_line = get_custom_slope(y1=graft_max, y2=graft_min, x_max=log_max)
+  host_line = get_custom_slope(y1=1-graft_max, y2=1-graft_min, x_max=log_max)
+
+  newplot <- p + geom_abline(slope = graft_line["slope"], intercept = graft_line["y-intercept"], color = "black", linetype = "dashed", size = .75) +  # Add sloped line
+    geom_abline(slope = host_line["slope"], intercept = host_line["y-intercept"], color = "black", linetype = "dashed", size = .75)  # Add sloped line
+
+  print(newplot)
+
+  return(newplot)
+
+}
+
+## Also want to add in methods to plot the semilog threshold using the viz_utils plots.
 
 
 
