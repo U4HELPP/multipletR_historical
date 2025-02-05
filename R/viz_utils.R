@@ -38,7 +38,7 @@
 #' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
 #' @importFrom scales alpha
 #' @export
-linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percentMouse", color = "AssignedSpecies",
+linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percentMouse", color = "Assigned10XSpecies",
                                    title = "Linear Percent Scatter Plot", umi_cutoff = NA, species_cutoff = NA,
                                    Xaxislab = "Total UMI", Yaxislab = "Percent Mouse", colormapping = NA){
   if(all(is.na(colormapping))){
@@ -149,10 +149,10 @@ species_density_plot <- function(gem_df, assigned_species = "Human",
                                   refGenome_linecol = NA, refGenome_fillcol = NA,
                                   title = paste("Assigned Species:", assigned_species),
                                   Xaxislab = "Aligned Read Counts (Natural Log)",
-                                  Yaxislab = "Cell Density"){
+                                  Yaxislab = "Cell Density", assigned_species_col = "Assigned10XSpecies"){
 
-  gem_df_melt <- as.data.frame(reshape2::melt(gem_df[,c("GRCh38", "mm10","AssignedSpecies")]))
-  names(gem_df_melt) <- c("AssignedSpecies", "RefGenome", "AlignedCount")
+  gem_df_melt <- as.data.frame(reshape2::melt(gem_df[,c("GRCh38", "mm10", assigned_species_col)]))
+  names(gem_df_melt) <- c(assigned_species_col, "RefGenome", "AlignedCount")
 
   if(all(is.na(refGenome_linecol))){
     refGenome_linecol <- c("GRCh38" = "royalblue", "mm10" = "forestgreen")
@@ -162,7 +162,7 @@ species_density_plot <- function(gem_df, assigned_species = "Human",
   }
 
   # Visualize the number UMIs/transcripts per cell
-  p3 <- gem_df_melt[gem_df_melt$AssignedSpecies==assigned_species,] %>%
+  p3 <- gem_df_melt[gem_df_melt[assigned_species_col]==assigned_species,] %>%
     ggplot(aes(color=RefGenome, x=log(AlignedCount), fill= RefGenome, color= RefGenome)) +
     geom_density(alpha = 0.2) +
     scale_color_manual(values = refGenome_linecol) +  # Specify colors
