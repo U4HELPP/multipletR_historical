@@ -38,7 +38,7 @@
 #' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
 #' @importFrom scales alpha
 #' @export
-linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percentMouse", color = "Assigned10XSpecies",
+linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percentMouse", color = "AssignedSpecies_10X",
                                    title = "Linear Percent Scatter Plot", umi_cutoff = NA, species_cutoff = NA,
                                    Xaxislab = "Total UMI", Yaxislab = "Percent Mouse", colormapping = NA){
   if(all(is.na(colormapping))){
@@ -91,7 +91,7 @@ linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percen
 #' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
 #' @importFrom scales alpha
 #' @export
-semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "percentMouse", color = "Assigned10XSpecies",
+semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "percentMouse", color = "AssignedSpecies_10X",
                                    title = "Semi-Log Percent Scatter Plot", umi_cutoff = NA, species_cutoff = NA,
                                    Xaxislab = "Total UMI (Natural Log)", Yaxislab = "Percent Mouse", colormapping = NA){
 
@@ -127,7 +127,7 @@ semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "pe
 #' @description This function creates a density plot of aligned read counts for a specified assigned species. The data frame must be processed by `prep_gem_counts()` first.
 #' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
 #' @param assigned_species A string specifying the assigned species to plot. Default is "Human".
-#' @param assigned_species_col A string specifying the column name that contains the species assignments for plotting. Default is "Assigned10XSpecies".
+#' @param assigned_species_col A string specifying the column name that contains the species assignments for plotting. Default is "AssignedSpecies_10X".
 #' @param refGenome_linecol A named vector specifying the line colors for the reference genomes. Default is NA, which uses predefined colors.
 #' @param refGenome_fillcol A named vector specifying the fill colors for the reference genomes. Default is NA, which uses predefined colors.
 #' @param title A string specifying the title of the plot. This will be concatenated with the `assigned_species` string for the full title. Default is "Assigned Species".
@@ -147,7 +147,7 @@ semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "pe
 #' @importFrom scales alpha
 #' @export
 species_density_plot <- function(gem_df, assigned_species = "Human",
-                                  assigned_species_col = "Assigned10XSpecies",
+                                  assigned_species_col = "AssignedSpecies_10X",
                                   refGenome_linecol = NA, refGenome_fillcol = NA,
                                   title = "Assigned Species",
                                   Xaxislab = "Aligned Read Counts (Natural Log)",
@@ -183,7 +183,7 @@ species_density_plot <- function(gem_df, assigned_species = "Human",
 #' @title GEM Classification Summary
 #' @description This function creates a summary plot of GEM classification, including linear and semi-log scatter plots and density plots for human, mouse, and multiplet assigned species. The data frame must be processed by `prep_gem_counts()` first.
 #' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
-#' @param method A string specifying the method for plotting. Options are "default" or "SemiLog". Default is "default". If the `assigned_species_col` helper parameter is not specified, the `Assigned10XSpecies` column will be used by default. This parameter will also set the color that the scatter plots use.
+#' @param method A string specifying the method for plotting. Options are "default" or "SemiLog". Default is "default". If the `assigned_species_col` helper parameter is not specified, the `AssignedSpecies_10X` column will be used by default. This parameter will also set the color that the scatter plots use.
 #' @param ncol An integer specifying the number of columns in the grid layout. Default is 2.
 #' @param main_title A string specifying the title of the summary plot. Default is "GEM Classification Summary".
 #' @param ... Additional arguments passed to the helper functions.
@@ -230,8 +230,8 @@ gem_classification_summary <- function(gem_df, method="default", ncol=2, main_ti
   else if(method == "SemiLog"){
     # Change default parameters to SemiLog specific if they are not specified.
     if(!"colormapping" %in% names(scatter_args)) { scatter_args$colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5)) }
-    if(!"color" %in% names(scatter_args)){ scatter_args$color <- "SemiLogSpecies" }
-    if(!"assigned_species_col" %in% names(density_args)){ density_args$assigned_species_col <- "SemiLogSpecies" }
+    if(!"color" %in% names(scatter_args)){ scatter_args$color <- "AssignedSpecies_SemiLog" }
+    if(!"assigned_species_col" %in% names(density_args)){ density_args$assigned_species_col <- "AssignedSpecies_SemiLog" }
     if(!"title" %in% names(density_args)){ density_args$title <- "Assigned SemiLog Species" }
     if(!"refGenome_linecol" %in% names(density_args)){ density_args$refGenome_linecol <- c("GRCh38" = "royalblue", "mm10" = "red")}
     if(!"refGenome_fillcol" %in% names(density_args)){ density_args$refGenome_fillcol <- c("GRCh38" = "royalblue", "mm10" = "red")}

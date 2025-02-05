@@ -94,7 +94,7 @@ assign_new_call <- function(df){
 #' @param graft_max A numeric value indicating the maximum graft threshold. Default is 0.25. If greater than 1, it will be divided by 100.
 #' @param graft_min A numeric value indicating the minimum graft threshold. Default is 0.10. If greater than 1, it will be divided by 100.
 #'
-#' @return A data frame with additional columns `graft_cutpoint_log`, `host_cutpoint_log`, `SemiLog_Call`, and `SemiLogSpecies` representing the calculated thresholds and new classifications.
+#' @return A data frame with additional columns `graft_cutpoint_log`, `host_cutpoint_log`, `SemiLog_Call`, and `AssignedSpecies_SemiLog` representing the calculated thresholds and new classifications.
 #' @examples
 #' \dontrun{
 #' gem_df <- data.frame(totalReadsLog = rnorm(100), percentMouse = runif(100))
@@ -115,7 +115,7 @@ find_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10){
   gem_df$graft_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=graft_max, y2=graft_min, x_max=log_max)
   gem_df$host_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=1-graft_max, y2=1-graft_min, x_max=log_max)
   gem_df$SemiLog_Call <- assign_new_call(gem_df[,c("percentMouse", "graft_cutpoint_log", "host_cutpoint_log")])
-  gem_df$SemiLogSpecies <- ifelse(gem_df$SemiLog_Call == "GRCh38", "Human",
+  gem_df$AssignedSpecies_SemiLog <- ifelse(gem_df$SemiLog_Call == "GRCh38", "Human",
                                    ifelse(gem_df$SemiLog_Call == "mm10", "Mouse",
                                           ifelse(gem_df$SemiLog_Call == "Multiplet", "Multiplet", NA)))
 
@@ -139,7 +139,7 @@ find_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10){
 #'
 #' @examples
 #' \dontrun{
-#' gem_df <- data.frame(totalReadsLog = rnorm(100), SemiLogSpecies = sample(c("Human", "Mouse", "Multiplet"), 100, replace = TRUE))
+#' gem_df <- data.frame(totalReadsLog = rnorm(100), AssignedSpecies_SemiLog = sample(c("Human", "Mouse", "Multiplet"), 100, replace = TRUE))
 #' plot_semilog_threshold(gem_df, graft_max = 0.25, graft_min = 0.10)
 #' }
 plot_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10, ...){
@@ -160,7 +160,7 @@ plot_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10, ...){
   }
 
   if(!"color" %in% names(args)){
-    args$color = "SemiLogSpecies"
+    args$color = "AssignedSpecies_SemiLog"
   }
 
   # Create the initial semilog scatter plot.
