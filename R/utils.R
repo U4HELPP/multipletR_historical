@@ -22,7 +22,7 @@ prep_gem_counts <- function(gem_df){
   gem_df$percentMouse <- gem_df$mm10/(gem_df$mm10 + gem_df$GRCh38)
   gem_df$totalReads <- gem_df$mm10 + gem_df$GRCh38
   gem_df$totalReadsLog <- log(gem_df$mm10 + gem_df$GRCh38)
-  gem_df$AssignedSpecies <- ifelse(gem_df$call == "GRCh38", "Human",
+  gem_df$Assigned10XSpecies <- ifelse(gem_df$call == "GRCh38", "Human",
                                    ifelse(gem_df$call == "mm10", "Mouse",
                                           ifelse(gem_df$call == "Multiplet", "Multiplet", NA)))
 

@@ -91,7 +91,7 @@ linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percen
 #' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
 #' @importFrom scales alpha
 #' @export
-semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "percentMouse", color = "AssignedSpecies",
+semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "percentMouse", color = "Assigned10XSpecies",
                                    title = "Semi-Log Percent Scatter Plot", umi_cutoff = NA, species_cutoff = NA,
                                    Xaxislab = "Total UMI (Natural Log)", Yaxislab = "Percent Mouse", colormapping = NA){
 
