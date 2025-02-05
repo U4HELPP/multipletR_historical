@@ -28,3 +28,125 @@ prep_gem_counts <- function(gem_df){
 
   return(gem_df)
 }
+
+
+
+
+
+
+
+#' @title Calculate Classification Metrics
+#' @description This function calculates precision, recall, F1-score, and other classification metrics for each class and macro values.
+#'
+#' @param df A data frame containing the data to be processed.
+#' @param gold_standard_col A string specifying the name of the gold standard column.
+#' @param test_col A string specifying the name of the test column.
+#'
+#' @return A list containing precision, recall, F1-score, accuracy, kappa, and macro metrics.
+#' @examples
+#' \dontrun{
+#' df <- data.frame(AssignedSpecies1 = sample(c("Human", "Mouse", "Multiplet"), 100, replace = TRUE),
+#'                  AssignedSpecies2 = sample(c("Human", "Mouse", "Multiplet"), 100, replace = TRUE))
+#' metrics <- calculate_metrics(df, "AssignedSpecies1", "AssignedSpecies2")
+#' print(metrics)
+#' }
+#' @author Microsoft Copilot prompted by Amy Olex
+#' @date 2025-02-05
+#' @version 1.0
+#' @keywords classification, metrics, precision, recall, F1, accuracy, kappa
+#' @export
+calculate_metrics <- function(df, gold_standard_col, test_col) {
+  # Extract the gold standard and test columns
+  gold_standard <- df[[gold_standard_col]]
+  test <- df[[test_col]]
+
+  # Create a confusion matrix
+  cm <- confusionMatrix(as.factor(test), as.factor(gold_standard))
+
+  # Calculate metrics for each class
+  class_metrics <- data.frame(
+    Class = rownames(cm$byClass),
+    Precision = cm$byClass[, "Pos Pred Value"],
+    Recall = cm$byClass[, "Sensitivity"],
+    F1 = cm$byClass[, "F1"]
+  )
+
+  # Calculate macro metrics
+  macro_precision <- mean(class_metrics$Precision, na.rm = TRUE)
+  macro_recall <- mean(class_metrics$Recall, na.rm = TRUE)
+  macro_f1 <- mean(class_metrics$F1, na.rm = TRUE)
+  accuracy <- cm$overall["Accuracy"]
+  kappa <- cm$overall["Kappa"]
+
+  # Return metrics as a list
+  return(list(
+    class_metrics = class_metrics,
+    macro_precision = macro_precision,
+    macro_recall = macro_recall,
+    macro_f1 = macro_f1,
+    accuracy = accuracy,
+    kappa = kappa
+  ))
+}
+
+
+
+#' @title Evaluate Classification
+#' @description This function evaluates classification performance by calculating metrics for each test column against a gold standard column.
+#'
+#' @param df A data frame containing the data to be processed.
+#' @param gold_standard_col A string specifying the name of the gold standard column.
+#'
+#' @return A data frame containing precision, recall, F1-score, accuracy, kappa, and macro metrics for each test column.
+#' @examples
+#' \dontrun{
+#' df <- data.frame(AssignedSpecies1 = sample(c("Human", "Mouse", "Multiplet"), 100, replace = TRUE),
+#'                  AssignedSpecies2 = sample(c("Human", "Mouse", "Multiplet"), 100, replace = TRUE),
+#'                  AssignedSpecies3 = sample(c("Human", "Mouse", "Multiplet"), 100, replace = TRUE))
+#' metrics_df <- evaluate_classification(df, "AssignedSpecies1")
+#' print(metrics_df)
+#' }
+#' @author Microsoft Copilot prompted by Amy Olex
+#' @date 2025-02-05
+#' @version 1.0
+#' @keywords classification, evaluation, metrics, precision, recall, F1, accuracy, kappa
+#' @export
+evaluate_classification <- function(df, gold_standard_col) {
+  # Extract columns with "AssignedSpecies" as the first part of the name
+  assigned_species_cols <- grep("^AssignedSpecies", names(df), value = TRUE)
+
+  # Check if the gold standard column is in the extracted columns
+  if (!(gold_standard_col %in% assigned_species_cols)) {
+    stop("Specified gold standard column is not in the extracted 'AssignedSpecies' columns.")
+  }
+
+  # Initialize a list to store results
+  results <- list()
+
+  # Loop through the test columns
+  for (test_col in assigned_species_cols) {
+    if (test_col != gold_standard_col) {
+      metrics <- calculate_metrics(df, gold_standard_col, test_col)
+      metrics$test_col <- test_col
+      results[[test_col]] <- metrics
+    }
+  }
+
+  # Convert results to a dataframe
+  results_df <- do.call(rbind, lapply(results, function(x) {
+    data.frame(
+      Test_Column = x$test_col,
+      Class = x$class_metrics$Class,
+      Precision = x$class_metrics$Precision,
+      Recall = x$class_metrics$Recall,
+      F1 = x$class_metrics$F1,
+      Macro_Precision = x$macro_precision,
+      Macro_Recall = x$macro_recall,
+      Macro_F1 = x$macro_f1,
+      Accuracy = x$accuracy,
+      Kappa = x$kappa
+    )
+  }))
+
+  return(results_df)
+}
