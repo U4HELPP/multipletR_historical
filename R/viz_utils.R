@@ -127,9 +127,10 @@ semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "pe
 #' @description This function creates a density plot of aligned read counts for a specified assigned species. The data frame must be processed by `prep_gem_counts()` first.
 #' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
 #' @param assigned_species A string specifying the assigned species to plot. Default is "Human".
+#' @param assigned_species_col A string specifying the column name that contains the species assignments for plotting. Default is "Assigned10XSpecies".
 #' @param refGenome_linecol A named vector specifying the line colors for the reference genomes. Default is NA, which uses predefined colors.
 #' @param refGenome_fillcol A named vector specifying the fill colors for the reference genomes. Default is NA, which uses predefined colors.
-#' @param title A string specifying the title of the plot. Default is "Assigned Species: Human".
+#' @param title A string specifying the title of the plot. This will be concatenated with the `assigned_species` string for the full title. Default is "Assigned Species".
 #' @param Xaxislab A string specifying the label for the x-axis. Default is "Aligned Read Counts (Natural Log)".
 #' @param Yaxislab A string specifying the label for the y-axis. Default is "Cell Density".
 #' @return A ggplot object representing the density plot.
@@ -146,10 +147,11 @@ semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "pe
 #' @importFrom scales alpha
 #' @export
 species_density_plot <- function(gem_df, assigned_species = "Human",
+                                  assigned_species_col = "Assigned10XSpecies",
                                   refGenome_linecol = NA, refGenome_fillcol = NA,
-                                  title = paste("Assigned Species:", assigned_species),
+                                  title = "Assigned Species",
                                   Xaxislab = "Aligned Read Counts (Natural Log)",
-                                  Yaxislab = "Cell Density", assigned_species_col = "Assigned10XSpecies"){
+                                  Yaxislab = "Cell Density"){
 
   gem_df_melt <- as.data.frame(reshape2::melt(gem_df[,c("GRCh38", "mm10", assigned_species_col)]))
   names(gem_df_melt) <- c(assigned_species_col, "RefGenome", "AlignedCount")
@@ -161,6 +163,7 @@ species_density_plot <- function(gem_df, assigned_species = "Human",
     refGenome_fillcol <- c("GRCh38" = "royalblue", "mm10" = "forestgreen")
   }
 
+  title <- paste(title, ":", assigned_species)
   # Visualize the number UMIs/transcripts per cell
   p3 <- gem_df_melt[gem_df_melt[assigned_species_col]==assigned_species,] %>%
     ggplot(aes(color=RefGenome, x=log(AlignedCount), fill= RefGenome, color= RefGenome)) +
@@ -180,9 +183,11 @@ species_density_plot <- function(gem_df, assigned_species = "Human",
 #' @title GEM Classification Summary
 #' @description This function creates a summary plot of GEM classification, including linear and semi-log scatter plots and density plots for human, mouse, and multiplet assigned species. The data frame must be processed by `prep_gem_counts()` first.
 #' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
-#' @param title A string specifying the title of the summary plot. Default is "GEM_Classification_Summary".
-#' @param umi_cutoff A numeric value specifying the UMI cutoff for vertical dashed lines in the scatter plots. Default is 500 UMI.
-#' @param species_cutoff A numeric value specifying the species percent cutoff for horizontal dashed lines in the scatter plots. Default is .10. If greater than 1, it will be divided by 100.
+#' @param method A string specifying the method for plotting. Options are "default" or "SemiLog". Default is "default". If the `assigned_species_col` helper parameter is not specified, the `Assigned10XSpecies` column will be used by default. This parameter will also set the color that the scatter plots use.
+#' @param ncol An integer specifying the number of columns in the grid layout. Default is 2.
+#' @param main_title A string specifying the title of the summary plot. Default is "GEM Classification Summary".
+#' @param ... Additional arguments passed to the helper functions.
+#'
 #' @return A grid of ggplot objects representing the summary plot.
 #' @examples
 #' \dontrun{
@@ -194,15 +199,52 @@ species_density_plot <- function(gem_df, assigned_species = "Human",
 #' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
 #' @importFrom scales alpha
 #' @importFrom gridExtra grid.arrange
+#' @importFrom grid textGrob gpar
 #' @export
-gem_classification_summary <- function(gem_df, title="GEM_Classification_Summary", umi_cutoff=500, species_cutoff=.10){
+gem_classification_summary <- function(gem_df, method="default", ncol=2, main_title="GEM Classification Summary", ...){
 
-  p1 <- linear_percent_scatter(gem_df, umi_cutoff = umi_cutoff, species_cutoff = species_cutoff)
-  p2 <- semilog_percent_scatter(gem_df, umi_cutoff = umi_cutoff, species_cutoff = species_cutoff)
-  p3_human <- species_density_plot(gem_df, assigned_species = "Human")
-  p3_mouse <- species_density_plot(gem_df, assigned_species = "Mouse")
-  p3_multiplet <- species_density_plot(gem_df, assigned_species = "Multiplet")
-  summary_plot <- grid.arrange(p1, p2, p3_human, p3_mouse, p3_multiplet, ncol = 2)
+  # Capture the additional arguments
+  args <- list(...)
+
+  # Separate arguments for each helper function
+  scatter_args <- args[names(args) %in% c("Xdata", "Ydata", "color",
+                                          "title", "umi_cutoff", "species_cutoff",
+                                          "Xaxislab", "Yaxislab", "colormapping")]
+  # The color argument is the same as the assigned_species_col argument for the density plots,
+  # so just making sure that is automatically transfered to the scatter plots.
+  if("assigned_species_col" %in% names(args)){ scatter_args$color <- args$assigned_species_col }
+
+  density_args <- args[names(args) %in% c("assigned_species","assigned_species_col",
+                                          "refGenome_linecol", "refGenome_fillcol",
+                                          "title","Xaxislab","Yaxislab")]
+  print(density_args)
+  main_title <- textGrob(main_title, gp = gpar(fontsize = 20, fontface = "bold"))
+
+  if(method == "default"){
+    p1 <- do.call(linear_percent_scatter, c(list(gem_df), scatter_args))
+    p2 <- do.call(semilog_percent_scatter, c(list(gem_df), scatter_args))
+    p3_human <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Human"), density_args))
+    p3_mouse <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Mouse"), density_args))
+    p3_multiplet <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Multiplet"), density_args))
+  }
+  else if(method == "SemiLog"){
+    # Change default parameters to SemiLog specific if they are not specified.
+    if(!"colormapping" %in% names(scatter_args)) { scatter_args$colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5)) }
+    if(!"color" %in% names(scatter_args)){ scatter_args$color <- "SemiLogSpecies" }
+    if(!"assigned_species_col" %in% names(density_args)){ density_args$assigned_species_col <- "SemiLogSpecies" }
+    if(!"title" %in% names(density_args)){ density_args$title <- "Assigned SemiLog Species" }
+    if(!"refGenome_linecol" %in% names(density_args)){ density_args$refGenome_linecol <- c("GRCh38" = "royalblue", "mm10" = "red")}
+    if(!"refGenome_fillcol" %in% names(density_args)){ density_args$refGenome_fillcol <- c("GRCh38" = "royalblue", "mm10" = "red")}
+
+    p1 <- do.call(linear_percent_scatter, c(list(gem_df), scatter_args))
+    p2 <- do.call(plot_semilog_threshold, c(list(gem_df), scatter_args))
+    p3_human <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Human"), density_args))
+    p3_mouse <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Mouse"), density_args))
+    p3_multiplet <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Multiplet"), density_args))
+  }
+
+  summary_plot <- grid.arrange(main_title, arrangeGrob(p1, p2, p3_human, p3_mouse, p3_multiplet, ncol = ncol), nrow = 2, heights = c(0.1, 1))
+
 
   return(summary_plot)
 }
