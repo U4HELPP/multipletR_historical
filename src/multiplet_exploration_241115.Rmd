@@ -1,0 +1,374 @@
+---
+title: "Analysis"
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: no
+  html_document:
+    theme: cerulean
+    toc: yes
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+# Set up the environment
+library(knitr)
+opts_chunk$set(cache.path='cache/', fig.path='img/', cache=F, tidy=T, fig.keep='high', echo=F, dpi=100, warnings=F, message=F, comment=NA, warning=F, results='as.is', fig.width = 10, fig.height = 6) #out.width=700, 
+set.seed(1)
+```
+
+## Amy Olex
+## 10.23.2024
+## Exploring the doublet and mutiplet detection from CellRanger as we are getting odd results for the Pancrease data.
+
+`multiplet_exploration_241115.R`
+
+# Libraries
+
+```{r libraries}
+library("dplyr")
+library("ggplot2")
+library("reshape2")
+library("gridExtra")
+library(patchwork)
+library(tibble)
+library(purrr)
+library(MASS)
+library(fitdistrplus)
+```
+
+# Settings
+
+```{r settings}
+dir_project <- "/Users/mdozmorov/Documents/Data/MultipletR"
+dir_data <- file.path(dir_project, "10X_gem_classifications")
+```
+
+# Helper functions (Amy)
+
+```{r helpers}
+find_log_cutoff <- function(x, y1, y2, x_max){
+  x1 = log(500)
+  x2 = x_max
+  m = (y1-y2)/(log(500)-x_max)
+  b = y1 - m*x1
+  y_pred = (m*x) + b
+  return(y_pred)
+}
+
+get_custom_slope <- function(y1, y2, x_max){
+  x1 = log(500)
+  x2 = x_max
+  m = (y1-y2)/(log(500)-x_max)
+  b = y1 - m*x1
+  return(c("slope"=m, "y-intercept"=b))
+}
+
+## df must be mouse percent, graft cutoff, host cutoff columns only
+assign_new_call <- function(df){
+  names(df) <- c("host_percent", "graft_cut", "host_cut")
+  df$call <- NA
+  for(i in 1:dim(df)[1]){
+    #print(df[i,"host_percent"])
+    if(df[i,"host_percent"] <= df[i,"graft_cut"])
+    {df[i,"call"] = "GRCh38"}
+    else if(df[i,"host_percent"] >= df[i,"host_cut"])
+    {df[i,"call"] = "mm10"}
+    else
+    {df[i,"call"] = "Multiplet"}
+  }
+  return(df$call)
+}
+
+```
+
+# One sample
+
+Plots of percent mouse vs. total number of reads per cell (raw and log10-transformed).
+Colored by 10x multiplet calls. We observe that many cells with high total number 
+of reads per cell and near-zero percent mouse reads (i.e., true human) are labeled 
+as multiplets. Similarly, cells with near-100% mouse reads (i.e. true mouse) are
+also labeled as multiplets. This labeling appears incorrect and leads to the loss of
+high-quality (= high number of reads) cells.
+
+```{r fig.height=5, fig.width=7}
+title = "PC-062"
+fileNameIn1 <- file.path(dir_data, "VCU-PC-062_gem_classification.csv")
+gem_df <- read.delim(fileNameIn1, header = TRUE, row.names = 1, sep=",")
+
+# Rename columns
+names(gem_df) <- c("GRCh38_count", "mm10_count", "x10X_Call")
+
+# gem_df$HumanDiff <- gem_df$GRCh38 - gem_df$mm10 # Human counts, without mouse
+# gem_df$MouseDiff <- gem_df$mm10 - gem_df$GRCh38 # Mouse counts, without human
+
+# Calculate additional columns
+gem_df$percentMouse <- gem_df$mm10_count/(gem_df$mm10_count + gem_df$GRCh38_count) # Percent mouse
+gem_df$totalReads <- gem_df$mm10_count + gem_df$GRCh38_count # Total counts
+gem_df$totalReadsLog <- log10(gem_df$mm10_count + gem_df$GRCh38_count) # Log total counts
+log_max = max(gem_df$totalReadsLog) # Maximum log total counts
+
+# gem_df$graft_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=.25, y2=.10, x_max=log_max)
+# gem_df$host_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=.75, y2=.90, x_max=log_max)
+# gem_df$MESSY_Call <- assign_new_call(gem_df[,c("percentMouse", "graft_cutpoint_log", "host_cutpoint_log")])
+# Slopes proposed by Amy. Didn't work with those plots
+# graft_line = get_custom_slope(y1=.25, y2=.10, x_max=log_max)
+# host_line = get_custom_slope(y1=.75, y2=.90, x_max=log_max)
+
+p1 <- ggplot(gem_df, aes(x = totalReads, y = percentMouse, color = x10X_Call)) +
+  geom_point() +  # Add points
+  scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))) +  # Specify colors
+  geom_vline(xintercept = 500, linetype = "dashed", color = "grey", linewidth = .75) +
+  geom_hline(yintercept = .10, linetype = "dashed", color = "darkgrey", linewidth = .75) +
+  geom_hline(yintercept = .90, linetype = "dashed", color = "darkgrey", linewidth = .75) +
+  # geom_abline(slope = graft_line["slope"], intercept = graft_line["y-intercept"], color = "red", linetype = "dashed", linewidth = .75) +  # Add sloped line
+  # geom_abline(slope = host_line["slope"], intercept = host_line["y-intercept"], color = "red", linetype = "dashed", linewidth = .75) +  # Add sloped line
+  labs(title = paste0("10X GEM Multiplet Calls: ", title),
+       x = "Total Number of Reads in Cell",
+       y = "Percent Mouse") +
+  theme_minimal()  # Optional: use a minimal theme
+
+p2 <- ggplot(gem_df, aes(x = totalReadsLog, y = percentMouse, color = x10X_Call)) +
+  geom_point() +  # Add points
+  scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))) +  # Specify colors
+  geom_vline(xintercept = log(500), linetype = "dashed", color = "grey", linewidth = .75) +
+  geom_hline(yintercept = .10, linetype = "dashed", color = "darkgrey", linewidth = .75) +
+  geom_hline(yintercept = .90, linetype = "dashed", color = "darkgrey", linewidth = .75) +
+  labs(title = paste0("10X GEM Multiplet Calls: ", title),
+       x = "Log of Total Number of Reads in Cell",
+       y = "Percent Mouse") +
+  theme_minimal()  # Optional: use a minimal theme
+
+p1 / p2
+  
+```
+
+# Hypothesis
+
+We hypothesize that, at each range of total number of reads per cell, the percent
+mouse distributions are peaked near 0% and 100%, and the tails of these distributions,
+extending towards 50% mouse, contain statistically detectable outliers labeled as 
+true multiplets. This observation should hold for the raw and log10-transformed
+total number of reads per cell.
+
+## Distribution type
+
+
+
+```{r}
+# Select data
+data <- gem_df[, c("percentMouse", "totalReadsLog", "x10X_Call")]
+
+# Separate data into groups
+grch38_data <- data[data$x10X_Call == "GRCh38", ]$percentMouse
+mm10_data <- data[data$x10X_Call == "mm10", ]$percentMouse
+
+# Invert mm10 values (left-tailed, starts near 1)
+mm10_inverted <- 1 - mm10_data
+
+# Plot distributions
+par(mfrow = c(2, 2))
+hist(grch38_data, breaks = 30, main = "GRCh38 percentMouse", xlab = "percentMouse")
+hist(mm10_inverted, breaks = 30, main = "mm10 (Inverted) percentMouse", xlab = "1 - percentMouse")
+plot(density(grch38_data))
+plot(density(mm10_inverted))
+
+# Fit distributions to GRCh38
+grch38_fits <- list(
+  gamma = fitdist(grch38_data, "gamma"),
+  exp = fitdist(grch38_data, "exp"),
+  norm = fitdist(grch38_data, "norm"),
+  lnorm = fitdist(grch38_data, "lnorm"),
+  weibull = fitdist(grch38_data, "weibull"),
+  beta = fitdist(grch38_data, "beta"),
+  cauchy = fitdist(grch38_data, "cauchy")
+)
+
+# Fit distributions to mm10 (inverted)
+mm10_fits <- list(
+  gamma = fitdist(mm10_inverted, "gamma"),
+  exp = fitdist(mm10_inverted, "exp"),
+  norm = fitdist(mm10_inverted, "norm"),
+  lnorm = fitdist(mm10_inverted, "lnorm"),
+  weibull = fitdist(mm10_inverted, "weibull"),
+  beta = fitdist(mm10_inverted, "beta"),
+  cauchy = fitdist(mm10_inverted, "cauchy")
+)
+
+# Assess goodness of fit
+rank_fits <- function(fit_list) {
+  aic_values <- sapply(fit_list, function(fit) fit$aic)
+  aic_values[order(aic_values)]
+}
+
+cat("GRCh38 AIC Rankings:\n")
+print(rank_fits(grch38_fits))
+
+cat("mm10 (Inverted) AIC Rankings:\n")
+print(rank_fits(mm10_fits))
+
+# Visual inspection
+par(mfrow = c(1, 2))
+denscomp(grch38_fits, legendtext = names(grch38_fits), main = "GRCh38 Fits")
+denscomp(mm10_fits, legendtext = names(mm10_fits), main = "mm10 Inverted Fits")
+
+# Summarize the best fits
+cat("Best Fit for GRCh38:\n")
+summary(grch38_fits[[names(rank_fits(grch38_fits))[1]]])
+
+cat("Best Fit for mm10 (Inverted):\n")
+summary(mm10_fits[[names(rank_fits(mm10_fits))[1]]])
+  
+```
+
+"lnorm" (log-norm) or "gamma" distributions fit best.
+
+## Statistical multiplet detection
+
+How to select ranges of the total reads per cell? Selecting 1 (full range) may be
+inappropriate due to clear differences in percent mouse distribution across 
+the total reads per cell. Selecting many may leave insufficient points in each
+region to fit a distribution.
+
+Here, we investigated the number of statistically classified human, mouse, and
+mixed cells dependence on the number of ranges the total number of reads per cell
+range is split.
+
+```{r}
+# Fit a distribution 'dist' to the percent mouse values. For upper (near 100%) 
+# or lower (near 0%) bound values, selected to include values above/below 50%,
+# respectively
+fit_distribution <- function(values, lower_bound = TRUE, dist = "lnorm") {
+  if (lower_bound) { # If near 0%
+    values <- values[values <= 0.5] # Select values below 50%
+  } else { # Otherwise
+    values <- 1 - values[values > 0.5] # Select valued above 50%
+  }
+  
+  if (length(values) > 1) {
+    if (dist == "gamma") {
+      fit <- fitdistr(values, "gamma")
+    } else if (dist == "lnorm") {
+      fit <- fitdistr(values, "lognormal")
+    } else if (dist == "norm") {
+      fit <- fitdistr(values, "normal")
+    } else {
+      stop("Unsupported distribution")
+    }
+    return(fit)
+  }
+  return(NULL)
+}
+
+# Detect significant outliers (multiplets) for upper and lower percent mouse fits.
+# Each value is compared against the fit and, if significant, labeled as "mixed".
+# Otherwise, labeled as "human" or "mouse", depending on the upper or lower assignment.
+classify_point <- function(value, fit_0, fit_1, dist = "lnorm") {
+  if (value <= 0.5) {
+    if (dist == "gamma") {
+      p_fit_0 <- dgamma(value, shape = fit_0$estimate["shape"], rate = fit_0$estimate["rate"])
+    } else if (dist == "lnorm") {
+      p_fit_0 <- dlnorm(value, meanlog = fit_0$estimate["meanlog"], sdlog = fit_0$estimate["sdlog"])
+    } else if (dist == "norm") {
+      p_fit_0 <- dnorm(value, mean = fit_0$estimate["mean"], sd = fit_0$estimate["sd"])
+    }
+    return(ifelse(p_fit_0 > 0.05, "human", "mixed"))
+  } else {
+    if (dist == "gamma") {
+      p_fit_1 <- dgamma(1 - value, shape = fit_1$estimate["shape"], rate = fit_1$estimate["rate"])
+    } else if (dist == "lnorm") {
+      p_fit_1 <- dlnorm(1 - value, meanlog = fit_1$estimate["meanlog"], sdlog = fit_1$estimate["sdlog"])
+    } else if (dist == "norm") {
+      p_fit_1 <- dnorm(1 - value, mean = fit_1$estimate["mean"], sd = fit_1$estimate["sd"])
+    }
+    return(ifelse(p_fit_1 > 0.05, "mouse", "mixed"))
+  }
+}
+
+# Data frame to keep all results
+results_list <- tibble(n_regions = integer(), human = integer(), mouse = integer(), mixed = integer())
+
+# Test 1 to 20 regions
+for (num_regions in 1:20) {
+  # Create ranges defined by the number of regions
+  ranges <- tibble(
+    Start = quantile(data$totalReadsLog, probs = seq(0, 1, length.out = num_regions + 1)[-length(seq(0, 1, length.out = num_regions + 1))]),
+    End = quantile(data$totalReadsLog, probs = seq(0, 1, length.out = num_regions + 1)[-1])
+  )
+  
+  # Classify points within each range
+  results <- data %>%
+    group_by(region = cut(totalReadsLog, breaks = c(ranges$Start, max(ranges$End)), include.lowest = TRUE)) %>%
+    group_modify(~ {
+      fit_0 <- fit_distribution(.x$percentMouse, lower_bound = TRUE, dist = "lnorm")
+      fit_1 <- fit_distribution(.x$percentMouse, lower_bound = FALSE, dist = "lnorm")
+      
+      .x %>%
+        rowwise() %>%
+        mutate(
+          modeling = if (!is.null(fit_0) && !is.null(fit_1)) {
+            classify_point(percentMouse, fit_0, fit_1, dist = "lnorm")
+          } else {
+            "mixed"
+          }
+        )
+    }) %>%
+    ungroup()
+  
+  # Count the number of human, mouse, and mixed cells
+  summary_counts <- results %>%
+    count(modeling) %>%
+    tidyr::pivot_wider(names_from = modeling, values_from = n, values_fill = list(n = 0)) %>%
+    mutate(n_regions = num_regions) %>%
+    dplyr::select(n_regions, human, mouse, mixed)
+  
+  results_list <- bind_rows(results_list, summary_counts)
+}
+
+# Original 10x multiplet detection
+p1 <- ggplot(results, aes(x = totalReadsLog, y = percentMouse, color = x10X_Call)) +
+  geom_point(size = 3, alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Scatterplot of percentMouse colored by x10X_Call",
+       x = "totalReadsLog",
+       y = "percentMouse")
+
+# Statistical multiplet detection
+p2 <- ggplot(results, aes(x = totalReadsLog, y = percentMouse, color = modeling)) +
+  geom_point(size = 3, alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Scatterplot of percentMouse colored by modeling",
+       x = "totalReadsLog",
+       y = "percentMouse")
+
+# Counts of human and mouse cells depending on the number of ranges
+p3_hm <- ggplot(results_list, aes(x = n_regions)) +
+  geom_line(aes(y = human, color = "human"), size = 1) +
+  geom_line(aes(y = mouse, color = "mouse"), size = 1) +
+  geom_hline(yintercept = sum(data$x10X_Call == "GRCh38"), linetype = "dashed", color = "blue") +
+  geom_hline(yintercept = sum(data$x10X_Call == "mm10"), linetype = "dashed", color = "red") +
+  theme_minimal() +
+  labs(title = "Classification of Human and Mouse by Number of Regions",
+       subtitle = "Dashed - counts of human and mouse cells detected by 10x",
+       x = "Number of Regions",
+       y = "Count",
+       color = "Classification")
+
+# Counts of multiplet cells depending on the number of ranges
+p3_mixed <- ggplot(results_list, aes(x = n_regions)) +
+  geom_line(aes(y = mixed, color = "mixed"), size = 1) +
+  geom_hline(yintercept = sum(data$x10X_Call == "Multiplet"), linetype = "dashed", color = "green") +
+  theme_minimal() +
+  labs(title = "Classification of Mixed by Number of Regions",
+       subtitle = "Dashed - counts of multiplet cells detected by 10x",
+       x = "Number of Regions",
+       y = "Count",
+       color = "Classification")
+
+(p1 + p2) / (p3_hm + p3_mixed)
+
+knitr::kable(results_list, caption = "Counts of cells classified by modeling")
+```
+
+The number of regions appears to have minimal impact on the number of classified
+cells.
