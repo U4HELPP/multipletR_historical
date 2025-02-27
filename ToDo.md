@@ -1,12 +1,9 @@
 # `multiplet_exploration_241115.Rmd`
 
-- MD: For all samples, generate plots p1 (line 117) and p2 (line 130)
-
-- MD: Test distribution type for raw total number of reads per cell
-
-- MD: Try "gamma" distribution
-
-- MD: Try adding minimum thresholds to catch high human/mouse percent cells that 
++ MD: For all samples, generate plots p1 (line 117) and p2 (line 130)
++ MD: Test distribution type for raw total number of reads per cell
++ MD: Try "gamma" distribution
++ MD: Try adding minimum thresholds to catch high human/mouse percent cells that 
 cannot be captured by a distribution
 
 # General

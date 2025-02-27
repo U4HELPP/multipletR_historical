@@ -1,0 +1,84 @@
+---
+title: "multiplet_exploration_241115 for all gem_classification.csv files" 
+author: "Mikhail Dozmorov"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: no
+  html_document:
+    theme: cerulean
+    toc: yes
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+# Set up the environment
+library(knitr)
+opts_chunk$set(cache.path='cache/', fig.path='img/', cache=F, tidy=T, fig.keep='high', echo=F, dpi=100, warnings=F, message=F, comment=NA, warning=F, results='as.is', fig.width = 10, fig.height = 6) #out.width=700, 
+set.seed(1)
+```
+
+```{r}
+library(ggplot2)
+library(patchwork)
+library(scales)
+library(dplyr)
+
+# Set project and data directories
+dir_project <- "/Users/mdozmorov/Documents/Data/MultipletR"
+dir_data <- file.path(dir_project, "10X_gem_classifications")
+
+# Get all gem classification files
+gem_files <- list.files(dir_data, pattern = "*_gem_classification.csv", full.names = TRUE)
+
+# Function to process and plot each file
+process_gem_file <- function(file_path) {
+  # Extract sample title
+  title <- gsub("_gem_classification.csv", "", basename(file_path))
+  
+  # Read data
+gem_df <- read.delim(file_path, header = TRUE, row.names = 1, sep = ",")
+  
+  # Rename columns
+  names(gem_df) <- c("GRCh38_count", "mm10_count", "x10X_Call")
+  
+  # Compute derived metrics
+  gem_df <- gem_df %>%
+    mutate(
+      percentMouse = mm10_count / (mm10_count + GRCh38_count),
+      totalReads = mm10_count + GRCh38_count,
+      totalReadsLog = log10(totalReads)
+    )
+  
+  # Get max log reads
+  log_max <- max(gem_df$totalReadsLog, na.rm = TRUE)
+  
+  # Generate plots
+  p1 <- ggplot(gem_df, aes(x = totalReads, y = percentMouse, color = x10X_Call)) +
+    geom_point() +
+    scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))) +
+    geom_vline(xintercept = 500, linetype = "dashed", color = "grey", linewidth = 0.75) +
+    geom_hline(yintercept = c(0.10, 0.90), linetype = "dashed", color = "darkgrey", linewidth = 0.75) +
+    labs(title = paste0("10X GEM Multiplet Calls: ", title),
+         x = "Total Number of Reads in Cell",
+         y = "Percent Mouse") +
+    theme_minimal()
+  
+  p2 <- ggplot(gem_df, aes(x = totalReadsLog, y = percentMouse, color = x10X_Call)) +
+    geom_point() +
+    scale_color_manual(values = c("GRCh38" = alpha("royalblue", 0.5), "mm10" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))) +
+    geom_vline(xintercept = log(500), linetype = "dashed", color = "grey", linewidth = 0.75) +
+    geom_hline(yintercept = c(0.10, 0.90), linetype = "dashed", color = "darkgrey", linewidth = 0.75) +
+    labs(title = paste0("10X GEM Multiplet Calls: ", title),
+         x = "Log of Total Number of Reads in Cell",
+         y = "Percent Mouse") +
+    theme_minimal()
+  
+  # Combine and display plots
+  print(p1 / p2)
+}
+
+# Process all files
+lapply(gem_files, process_gem_file)
+
+```
+
