@@ -10,6 +10,15 @@ cannot be captured by a distribution
 
 - Process test datasets to get 10x classification, https://www.10xgenomics.com/datasets?configure%5BhitsPerPage%5D=50&configure%5BmaxValuesPerFacet%5D=1000&refinementList%5Bplatform%5D%5B0%5D=Chromium%20Single%20Cell&refinementList%5Bspecies%5D%5B0%5D=Human%2C%20Mouse
 
+Universal 5' Gene Expression v3, Universal 3' Gene Expression v4
+
+```
+-rw-rw---- 1 jlmcclay pgxseq  7111683205 May  1  2024 CPF7_S3_R1_001.fastq.gz
+-rw-rw---- 1 jlmcclay pgxseq 16111759831 May  1  2024 CPF7_S3_R2_001.fastq.gz
+
+cellranger count --id CPF7 --transcriptome /lustre/home/mdozmorov/data/ExtData/10x/refdata-Rnor6-ensembl/Rnor_genome --fastqs /lustre/home/mdozmorov/data/WorkData/McClay/2024-05.scRNA-seq/00_raw --sample CPF7
+```
+
 - Classify test datasets with XenoCell, https://gitlab.com/XenoCell/XenoCell
 
 # Biology
