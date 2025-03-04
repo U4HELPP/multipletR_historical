@@ -7,3 +7,7 @@
 - `01_multiplet_exploration_all.Rmd` - Plots for all `gem_classification.csv` files.
 
 - `02_multiplet_raw.Rmd` - using raw data. Also includes fixed_threshold filtering.
+
+- `cellranger_10k_hgmm_gemx.sh` - downloads and runs cellranger on the 5p and 3p 10k 1:1 Mixture of Human HEK293T and Mouse NIH3T3 Cells, Chromium GEM-X Single Cell datasets from [10x](https://www.10xgenomics.com/datasets?configure%5BhitsPerPage%5D=50&configure%5BmaxValuesPerFacet%5D=1000&refinementList%5Bplatform%5D%5B0%5D=Chromium%20Single%20Cell&refinementList%5Bspecies%5D%5B0%5D=Human%2C%20Mouse)
+  - Input: none, script will download the two datasets
+  - Output: standard output from cellranger for each sample within the two datasets
