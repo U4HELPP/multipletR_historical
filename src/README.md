@@ -12,6 +12,6 @@
   - Input: none, script will download the two datasets
   - Output: standard output from cellranger for each sample within the two datasets
 
-- `cellranger_10k_hgmm_gemx.sh` - downloads and runs cellranger on SRR8890633 from [GSE129578](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE129578), [McGinnis, C.S., Patterson, D.M., Winkler, J. et al.](https://doi.org/10.1038/s41592-019-0433-8)
+- `cellranger_SRR8890633.sh` - downloads and runs cellranger on SRR8890633 from [GSE129578](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE129578), [McGinnis, C.S., Patterson, D.M., Winkler, J. et al.](https://doi.org/10.1038/s41592-019-0433-8)
   - Input: none, script will download the dataset
   - Output: standard output from cellranger for the sample
