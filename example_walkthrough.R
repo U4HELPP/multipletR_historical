@@ -8,11 +8,22 @@ library("grid")
 library("caret")
 library("e1071")
 
+## Source R functions until package is importable
+source("R/utils.R")
+source("R/viz_utils.R")
+source("R/method_semilog_linear.R")
 
+## Load example dataset
+## Two types of example data sets are provided, LowMouse and StandardMouse.
+## Each indicates the relative amount of mouse content in the sample.
+## Standard Mouse samples did not use a mouse depletion kit prior to sampling and LowMouse samples did, so they have very few mouse cells called.
+## Available files:
+## VCU-BC-024_110857-61_lungmet_StandardMouse_gem_classification.csv
+## VCU-BC-043_StandardMouse_gem_classification.csv
+## VCU-CO-098_4245_LowMouse_gem_classification.csv
+## VCU-PC-081_4220_LowMouse_gem_classification.csv
 
-## Load dataset
-gems <- read.delim("/lustre/home/harrell_lab/scRNASeq/exploratory_analyses/multiplet_exploration/VCUBC024lungmet_GEM.txt", header=FALSE, sep=",")
-gem_data <- read.delim(paste0(gems[1,2], "/analysis/gem_classification.csv"), header = TRUE, row.names = 1, sep=",")
+gem_data <- read.delim("example_data/VCU-BC-043_StandardMouse_gem_classification.csv", header = TRUE, row.names = 1, sep=",")
 
 ## Preprocess gem df
 gem_df <- prep_gem_counts(gem_data)
