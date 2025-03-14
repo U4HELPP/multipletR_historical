@@ -185,14 +185,3 @@ plot_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10, ...){
 
 
 
-gem_df$barcode <- row.names(gem_df)
-for_gem_file <- gem_df[,c("barcode", "GRCh38_count", "mm10_count", "MESSY_Call")]
-names(for_gem_file) <- c("barcode", "GRCh38", "mm10", "call")
-
-write.csv(gem_df, file=paste0("MultipletCalls_Matrix_", title, ".csv"), quote = FALSE, row.names = FALSE)
-write.csv(for_gem_file, file=paste0(save_dir, "gem_classification.csv"), quote = FALSE, row.names = FALSE)
-
-# write out Loupe Annotations
-write.csv(gem_df[,c("barcode","x10X_Call")], file=paste0(title, "_10x_gem_class_Annotations.csv"), quote = FALSE, row.names = FALSE)
-write.csv(gem_df[,c("barcode","MESSY_Call")], file=paste0(title, "_MESSY_class_Annotations.csv"), quote = FALSE, row.names = FALSE)
-
