@@ -1,0 +1,244 @@
+---
+title: "multipletR Package Usage"
+author: "Amy Olex and MS CoPilot (March 2025)"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+---
+
+
+## Introduction
+
+The `multipletR` package is designed to process and analyze single-cell RNA sequencing data, specifically focusing on re-classifying species of each cell. This document provides an overview of the package, its organization, and a general workflow for using its functions.
+
+The primary function of this R package is to process a CSV file containing four columns: cell barcode, human counts, mouse counts, and species classification. It utilizes these counts and a statistical method to re-classify the species of each cell, improving upon the default classification. The package creates a dataframe from the input CSV file and appends new columns to it, including the new classifications and additional statistics such as cutoffs and count totals. Visualization functions are provided to draw and visualize the results, including new cutoff thresholds and the distribution of species calls. Additionally, the package includes functions to calculate performance metrics, which can be based on a user-selected reference. Currently, the default reference is the 10X species calls, but this will be updated to the true gold standard once it is established.
+
+## Package Organization
+
+The package is organized into several key functions:
+
+- **Data Preparation**: Functions to preprocess the input CSV file and create a dataframe with necessary columns.
+- **Visualization**: Functions to generate various plots for visualizing the data.
+- **Classification**: Functions to re-classify species and calculate performance metrics.
+
+## Workflow
+
+### Load Required Libraries
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warning=FALSE)
+
+library("dplyr")
+library("ggplot2")
+library("reshape2")
+library("gridExtra")
+library("grid")
+library("caret")
+library("e1071")
+```
+
+### Source R Functions
+
+The following R file and functions will need to be sourced until the package is a loadable R package.
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+source("R/utils.R")
+source("R/viz_utils.R")
+source("R/method_semilog_linear.R")
+```
+
+### Load Example Dataset
+
+Two types of example data sets are provided, LowMouse and StandardMouse.
+Each indicates the relative amount of mouse content in the sample.
+Standard Mouse samples did not use a mouse depletion kit prior to sampling and LowMouse samples did, so they have very few mouse cells called.
+Available files:
+ - VCU-BC-024_110857-61_lungmet_StandardMouse_gem_classification.csv
+ - VCU-BC-043_StandardMouse_gem_classification.csv
+ - VCU-CO-098_4245_LowMouse_gem_classification.csv
+ - VCU-PC-081_4220_LowMouse_gem_classification.csv
+ 
+We will use the VCU-BC-043_StandardMouse_gem_classification.csv for this walk through
+
+```{r}
+gem_data <- read.delim("example_data/VCU-BC-043_StandardMouse_gem_classification.csv", header = TRUE, row.names = 1, sep=",")
+
+# Display the first 3 rows of the dataframe
+head(gem_data, 3)
+```
+
+### Preprocess GEM Data
+
+The `prep_gem_counts` function takes a data frame of read counts from a 10X GEM file and adds additional columns for analysis and plotting.
+
+The prep_gem_counts() function adds the following columns to the dataframe:
+
+ - HumanDiff: Difference between human (GRCh38) and mouse (mm10) read counts.
+ - MouseDiff: Difference between mouse (mm10) and human (GRCh38) read counts.
+ - percentMouse: Proportion of reads that map to mouse (mm10).
+ - totalReads: Total number of reads (sum of GRCh38 and mm10).
+ - totalReadsLog: Logarithm of the total number of reads.
+ - AssignedSpecies_10X: Species assignment based on the call column, with values "Human", "Mouse", or "Multiplet".
+
+These additional columns are used for further analysis and visualization within the package.
+
+
+```{r}
+## Preprocess gem df
+gem_df <- prep_gem_counts(gem_data)
+
+# Display the first 3 rows of the dataframe
+head(gem_df, 3)
+```
+
+### Visualization Functions
+
+#### Linear Percent Scatter Plot
+
+The `linear_percent_scatter` function creates a scatter plot of the percent of total reads that map to a species versus the total library size (UMI count) for each single cell. The axes and colors can be customized.
+
+```{r, fig.width=7, fig.height=4}
+plot <- linear_percent_scatter(gem_df)
+print(plot)
+```
+
+#### Semi-Log Percent Scatter Plot
+
+The `semilog_percent_scatter` function creates a scatter plot of the percent of total reads that map to a species versus the log-transformed total library size (UMI count) for each single cell. The axes and colors can be customized.
+
+```{r, fig.width=7, fig.height=4}
+plot <- semilog_percent_scatter(gem_df)
+print(plot)
+```
+
+#### Species Density Plot
+
+The `species_density_plot` function creates a density plot of aligned read counts for a specified assigned species. The data frame must be processed by `prep_gem_counts()` first.
+
+The `species_density_plot` function is versatile and can be used to visualize the distribution of aligned read counts for different species classifications. By specifying the `assigned_species` parameter, users can generate density plots for Human, Mouse, or Multiplet species, providing insights into the data distribution for each classification.
+
+##### Example for Human
+
+```{r, fig.width=7, fig.height=4}
+# Create a density plot for Human species
+human_density_plot <- species_density_plot(gem_df, assigned_species = "Human")
+print(human_density_plot)
+```
+
+##### Example for Mouse
+
+```{r, fig.width=7, fig.height=4}
+# Create a density plot for Mouse species
+mouse_density_plot <- species_density_plot(gem_df, assigned_species = "Mouse")
+print(mouse_density_plot)
+```
+
+##### Example for Multiplet
+
+```{r, fig.width=7, fig.height=4}
+# Create a density plot for Multiplet species
+multiplet_density_plot <- species_density_plot(gem_df, assigned_species = "Multiplet")
+print(multiplet_density_plot)
+```
+
+
+#### GEM Classification Summary
+
+The `gem_classification_summary` function creates a summary plot of GEM classification, including linear and semi-log scatter plots and density plots for human, mouse, and multiplet assigned species. The data frame must be processed by `prep_gem_counts()` first.
+
+The `gem_classification_summary` function provides a comprehensive overview of GEM classification through various plots. By adjusting the `ncol` parameter, users can control the layout of the summary plot, arranging the plots in multiple columns or a single column based on their preference and the level of detail required for analysis.
+
+
+##### Example with `ncol` set to 2
+
+```{r, fig.width=10, fig.height=8}
+# Generate summary plot with 2 columns
+summary_plot_ncol2 <- gem_classification_summary(gem_df, ncol = 2)
+print(summary_plot_ncol2)
+```
+
+**Explanation**: This example generates a summary plot with 2 columns. The `ncol` parameter is set to 2, which arranges the plots in a grid with 2 columns. This layout is useful for displaying multiple plots side by side, making it easier to compare them.
+
+##### Example with `ncol` set to 1
+
+```{r, fig.width=7, fig.height=15}
+# Generate summary plot with 1 column
+summary_plot_ncol1 <- gem_classification_summary(gem_df, ncol = 1)
+print(summary_plot_ncol1)
+```
+
+**Explanation**: This example generates a summary plot with 1 column. The `ncol` parameter is set to 1, which arranges the plots in a single column. This layout is useful for displaying plots in a vertical sequence, which can be helpful for detailed examination of each plot individually.
+
+
+### Find Semi-Log Threshold
+
+The `find_semilog_threshold` function calculates semi-logarithmic threshold values for graft and host populations and assigns new classifications based on these thresholds.
+
+The default cutoff values for graft_max and graft_min are set to 0.25 (or 25%) and 0.10 (or 10%), respectively. Specifically, graft_max represents 25% of Graft (Mouse) content for low UMI cells and decreases linearly in the semi-log space to 10% (graft_min). The graft_min starts at 500 UMI, and this function calculates the maximum UMI based on the data. These values were chosen based on a visual inspection of multiple samples and can be adjusted as needed.
+
+```{r}
+gem_df <- find_semilog_threshold(gem_df, graft_max=.25, graft_min=.10)
+
+# Display the first 3 rows of the dataframe
+head(gem_df, 3)
+```
+
+### Generate Summary Plot After Reclassification
+
+After reclassifying the species using the semi-logarithmic thresholds, the gem_classification_summary function can be used again to generate a summary plot. This plot will include the updated classifications and provide a visual comparison of the data before and after reclassification. By setting the method parameter to "SemiLog" and specifying the assigned_species_col parameter, the function will create a summary plot that reflects the new species assignments based on the semi-log thresholds.
+
+```{r, fig.width=10, fig.height=8}
+summary_plot2 <- gem_classification_summary(gem_df, method="SemiLog", assigned_species_col="AssignedSpecies_SemiLog")
+print(summary_plot2)
+```
+
+### Plot Semi-Log Scatter
+
+The `plot_semilog_threshold` function creates a semi-logarithmic scatter plot with custom threshold lines for graft and host populations.
+
+```{r, fig.width=7, fig.height=4}
+my_plot <- plot_semilog_threshold(gem_df, graft_max=.25, graft_min=.10, color="AssignedSpecies_SemiLog")
+print(my_plot)
+```
+
+
+### Evaluate Classifications Compared to 10X
+
+The `evaluate_classification` function evaluates classification performance by calculating metrics for each test column against a gold standard column. This function provides a comprehensive assessment of how well the re-classified species match the reference classifications.
+
+This example evaluates the classifications in the `gem_df` dataframe by comparing the re-classified species (`AssignedSpecies_SemiLog`) to the reference classifications (`AssignedSpecies_10X`). The function calculates various performance metrics, including precision, recall, F1-score, accuracy, and kappa.
+
+```{r}
+metrics_df <- evaluate_classification(gem_df, "AssignedSpecies_10X")
+print(metrics_df)
+```
+
+#### Example Output
+
+| Test_Column                | Class            | Precision | Recall   | F1       | Macro_Precision | Macro_Recall | Macro_F1 | Accuracy  | Kappa    |
+|----------------------------|------------------|-----------|----------|----------|-----------------|--------------|----------|-----------|----------|
+| AssignedSpecies_SemiLog.1  | Class: Human     | 0.9005267 | 0.9684096 | 0.9332354 | 0.8361218       | 0.7732488    | 0.7933762| 0.9390789 | 0.8888992|
+| AssignedSpecies_SemiLog.2  | Class: Mouse     | 0.9998208 | 0.9944742 | 0.9971403 | 0.8361218       | 0.7732488    | 0.7933762| 0.9390789 | 0.8888992|
+| AssignedSpecies_SemiLog.3  | Class: Multiplet | 0.6080178 | 0.3568627 | 0.4497529 | 0.8361218       | 0.7732488    | 0.7933762| 0.9390789 | 0.8888992|
+
+**Explanation of Output**:
+
+- **Test_Column**: The column being tested against the gold standard.
+- **Class**: The specific class (Human, Mouse, Multiplet) for which metrics are calculated.
+- **Precision**: The proportion of true positive predictions among all positive predictions.
+- **Recall**: The proportion of true positive predictions among all actual positives.
+- **F1**: The harmonic mean of precision and recall.
+- **Macro_Precision**: The average precision across all classes.
+- **Macro_Recall**: The average recall across all classes.
+- **Macro_F1**: The average F1-score across all classes.
+- **Accuracy**: The overall proportion of correct predictions.
+- **Kappa**: A measure of agreement between the predicted and actual classifications, adjusted for chance agreement.
+
+This output provides a detailed evaluation of the classification performance, allowing users to assess the accuracy and reliability of the re-classified species compared to the reference classifications.
+
+
+## Conclusion
+
+This document provides a comprehensive walkthrough of the `multipletR` package, demonstrating how to preprocess data, generate visualizations, re-classify species, and evaluate classification performance. By following this workflow, users can effectively analyze their single-cell RNA sequencing data using the `multipletR` package.
