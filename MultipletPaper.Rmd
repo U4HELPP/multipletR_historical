@@ -1,0 +1,487 @@
+---
+title: "Comparison of Multiplet Detection Methods in Patient-Derived Xenograft Single-Cell RNA Sequencing Data"
+author: ""
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: flatly
+    code_folding: hide
+  pdf_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,        
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6,
+  dpi = 500           # High resolution for publication
+)
+
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(dplyr)
+```
+
+# Abstract
+
+**Background:** Patient-derived xenograft (PDX) models are essential for cancer research, but single-cell RNA sequencing (scRNA-seq) of these samples faces challenges from species mixing, where human tumor cells and mouse stroma can form multiplets. Accurate multiplet detection is critical for downstream analysis.
+
+**Methods:** We tested two different approaches for identifying multiplets in our PDX scRNA-seq data.
+Our first method, the Median Absolute Deviation (MAD) approach, treats multiplets as statistical outliers. The basic idea is that most cells should be pure singlets (either mostly human or mostly mouse), so cells with unusually high contamination from the opposite species are likely multiplets. We tested this method at three different stringency levels (σ = 5, 10, and 15) to see how strict versus lenient thresholds affect detection.
+The second method uses splines—smooth curves that adapt to different read depths. Rather than applying a single fixed threshold to all cells, this approach recognizes that cells with different total read counts may have different baseline contamination levels. We divide cells into regions based on read depth, calculate what "normal" contamination looks like in each region, and then fit smooth curves through these points to create our classification boundaries.
+We added two important features to make this spline method more robust. First, we enforced monotonic constraints, which prevent the contamination threshold from increasing as read depth increases—this reflects the biological expectation that better-captured cells shouldn't show higher contamination. Second, we implemented adaptive region sizing so the method automatically adjusts to datasets with different numbers of cells or varying degrees of species imbalance.
+We validated both methods using four 10X Genomics benchmark datasets that come with known multiplet labels, then applied them to 16 patient-derived xenograft samples from VCU Massey Cancer Center.
+
+**Results:** [To be filled in ]
+
+**Conclusions:** [To be filled in]
+
+
+
+---
+
+# Introduction
+
+## Background
+
+Patient-derived xenograft (PDX) models have become essential tools in cancer research because they allow us to study human tumors in a living system while preserving the cellular complexity of the original patient's cancer [CITE]. When we combine these models with single-cell RNA sequencing (scRNA-seq), we can examine individual tumor cells and understand how they interact with the surrounding mouse stromal environment [CITE].
+However, working with PDX scRNA-seq data presents a specific analytical challenge: species mixing. During single-cell capture, droplets are designed to isolate individual cells, but occasionally a droplet captures both a human tumor cell and a mouse stromal cell together. These mixed-species droplets, called "multiplets" or "doublets" [CITE], complicate downstream analysis in several ways:
+
+1.They create apparent cell populations that don't actually exist in the tumor
+2.They distort gene expression measurements by combining human and mouse transcripts
+3.They can lead to wrong conclusions if we treat them as real single cells
+
+Accurate multiplet detection is therefore a critical quality control step in PDX scRNA-seq studies.
+
+## Current Approaches
+
+While several methods exist for detecting multiplets in single-species samples [CITE: Scrublet, DoubletFinder, etc.], PDX samples provide a unique opportunity. We can align reads to both human and mouse genomes separately, which tells us exactly how many human and mouse transcripts are in each droplet. This species information gives us a direct way to identify multiplets.
+
+## Study Objectives
+
+In this study, we:
+
+1. Evaluated the performance of the Median Absolute Deviation (MAD) method for multiplet detection across varying stringency thresholds
+2. Developed a spline-based method with adaptive features to address limitations in sparse data regions
+3. Validated both methods against 10X Genomics benchmark datasets with known ground truth
+4. Applied both methods to a collection of VCU patient-derived xenograft samples
+5. Compared method performance to provide recommendations for practitioners
+
+---
+
+# Materials and Methods
+
+## Datasets
+
+### 10X Genomics Benchmark Datasets
+
+We obtained four publicly available benchmark datasets from 10X Genomics (https://www.10xgenomics.com), consisting of defined mixtures of human and mouse cells:
+
+- **10k_hgmm_3p_gex1**: [Brief description]
+- **10k_hgmm_3p_gex2**: [Brief description]  
+- **10k_hgmm_5p_gex1**: [Brief description]
+- **10k_hgmm_5p_gex2**: [Brief description]
+
+These datasets include ground truth multiplet annotations from 10X's cell ranger analysis, enabling validation of our methods.
+
+### VCU Patient-Derived Xenograft Datasets
+
+We analyzed 16 PDX samples from the VCU Massey Cancer Center, representing multiple cancer types:
+
+- **Breast cancer (BC)**: n=4 samples
+- **Colorectal cancer (CO)**: n=2 samples
+- **Melanoma (MC)**: n=1 sample
+- **Prostate cancer (PC)**: n=9 samples
+
+All samples were processed using [describe sequencing protocol, library prep, etc.].
+
+### Data Processing
+
+Raw sequencing reads were aligned to a  human (GRCh38) and mouse (GRCm39) reference genome using [tool/pipeline]. For each cell barcode, we quantified:
+
+- Human reads (GRCh38)
+- Mouse reads (GRCm39)
+- Total reads
+- Mouse percentage: mouse_reads / total_reads
+
+Cells were classified into two initial groups based on the 50% threshold:
+- **Human side**: mouse_pct ≤ 0.5
+- **Mouse side**: mouse_pct > 0.5
+
+## Method 1: Median Absolute Deviation (MAD) Approach
+
+### Rationale
+
+The MAD method assumes that most cells are singlets (pure human or pure mouse), and multiplets represent outliers in the distribution of species mixing percentages. By identifying cells with unusually high contamination from the opposite species, we can detect likely multiplets.
+
+### Algorithm
+
+**[WRITE THIS SECTION]**
+
+Key points to include:
+1. How MAD is calculated
+2. How sigma thresholds work
+3. Why you tested σ = 5, 10, 15
+4. Density evolution concept
+
+```{r mad-method-diagram, eval=FALSE}
+# Consider adding a diagram showing:
+# - Distribution of mouse_pct
+# - MAD calculation
+# - Threshold at different sigmas
+```
+
+### Advantages and Limitations
+
+**Advantages:**
+- Simple and computationally efficient
+- No assumptions about data distribution
+- [Add more]
+
+**Limitations:**
+- [What limitations did i observe?]
+- [Why did this motivate the spline method?]
+
+## Method 2: Spline-Based Method with Adaptive Features
+
+### Rationale
+
+**[WRITE: Why you developed this method. What problems does it solve that MAD doesn't?]**
+
+Key points:
+- Need for read-depth-dependent thresholds
+- Sparse data regions
+- Monotonic biological constraint
+
+### Algorithm
+
+**[WRITE THIS SECTION]**
+
+Include:
+1. Region division strategy
+2. Percentile calculation per region
+3. Spline fitting procedure
+4. Monotonic constraint application
+5. Adaptive region sizing logic
+
+```{r spline-method-diagram, eval=FALSE}
+# Consider adding:
+# - Region division visualization
+# - Spline fitting example
+# - Classification boundary example
+```
+
+### Monotonic Constraint
+
+**Biological rationale:** In human-dominant regions (low total reads), we expect minimal mouse contamination in singlets. As read depth increases (more robust capture), the baseline mouse contamination in "singlet" human cells should not increase. Similarly, on the mouse side, the mouse percentage in singlets should not decrease with increasing read depth.
+
+**Implementation:** [Explain how you enforce this in the code]
+
+### Adaptive Region Sizing
+
+To handle datasets with varying cell numbers and species balance, we implemented adaptive region sizing:
+
+- **Default:** 500 cells per region
+- **Adaptive modes:** If insufficient cells for 4+ regions, automatically reduce to 400 → 300 → 250 → 200 cells per region
+- **Exclusion criteria:** Datasets with <800 cells on either side (cannot support minimum 4 regions)
+
+This ensures robust spline fitting even in sparse datasets while excluding extremely imbalanced samples unsuitable for the method.
+
+### Advantages and Limitations
+
+**Advantages:**
+- Read-depth-aware thresholds
+- Handles sparse regions adaptively
+- Biologically motivated constraints
+- [Add more]
+
+**Limitations:**
+- Requires balanced datasets (both species well-represented)
+- [Add more]
+
+## Performance Metrics
+
+We evaluated both methods using:
+
+1. **Number of multiplets detected**
+2. **Multiplet percentage** (% of total cells)
+3. **Correlation with 10X ground truth** (benchmark datasets only)
+4. **Density overlap** between human and mouse reads in detected multiplets
+5. **Detection ratio** (method_detected / ground_truth)
+
+## Statistical Analysis
+
+**[Describe any statistical tests, correlations, etc.]**
+
+---
+
+# Results
+
+## Overview of Datasets
+
+```{r dataset-summary-table}
+# Load your results
+# Create a table showing:
+# - Dataset name
+# - Total cells
+# - Human side cells
+# - Mouse side cells
+# - Species balance
+
+# Example structure:
+dataset_summary <- data.frame(
+  Dataset = c("10k_hgmm_3p_gex1", "..."),
+  Total_Cells = c(12189, "..."),
+  Human_Cells = c(6549, "..."),
+  Mouse_Cells = c(5640, "..."),
+  Human_Pct = c(53.7, "..."),
+  Category = c("10X Benchmark", "...")
+)
+
+kable(dataset_summary,
+      caption = "Table 1: Dataset characteristics",
+      format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover")) %>%
+  pack_rows("10X Benchmark Datasets", 1, 4) %>%
+  pack_rows("VCU PDX Datasets", 5, 20)
+```
+
+**[WRITE: Summary narrative about the datasets]**
+
+## MAD Method Results
+
+### Performance Across Sigma Thresholds
+
+```{r mad-results-table}
+# Load your MAD results for all three sigma values
+# Create comparison table
+
+# Example structure (you'll need to populate with your actual data):
+# mad_results <- read.csv("MAD_all_sigmas_results.csv")
+
+# kable(mad_results,
+#       caption = "Table 2: MAD method multiplet detection across sigma thresholds",
+#       format = "html")
+```
+
+**[WRITE: Describe the results]**
+- How many multiplets detected at each sigma?
+- How does this compare to ground truth?
+- Which sigma performs best?
+
+### Validation Against 10X Ground Truth
+
+```{r mad-vs-10x}
+# Create comparison plot/table
+# MAD (each sigma) vs 10X ground truth for benchmark datasets
+
+# Calculate correlations, ratios, errors
+```
+
+**[WRITE: Analysis of MAD performance]**
+
+### Density Evolution Analysis
+
+```{r mad-density-plots, fig.cap="Figure 1: Density evolution across sigma levels"}
+# Include some representative density evolution plots
+# Show how threshold changes with sigma
+```
+
+**[WRITE: What do the density evolution patterns tell us?]**
+
+## Spline Method Results
+
+### Performance Across Datasets
+
+```{r spline-results-table}
+# Load your spline results
+# spline_results <- read.csv("Spline_Method_Results_All_Datasets.csv")
+
+# kable(spline_results,
+#       caption = "Table 3: Spline method multiplet detection",
+#       format = "html")
+```
+
+**[WRITE: Describe spline performance]**
+- How many multiplets detected?
+- How many datasets required adaptive sizing?
+- Which datasets were excluded (extreme imbalance)?
+
+### Validation Against 10X Ground Truth
+
+```{r spline-vs-10x}
+# Create comparison plot/table
+# Spline vs 10X ground truth for benchmark datasets
+```
+
+**[WRITE: Analysis of Spline performance]**
+
+### Region Division and Adaptive Features
+
+```{r region-division-example, fig.cap="Figure 2: Example of region division and spline fitting"}
+# Include a representative region division plot
+# Show how the method adapts to different datasets
+```
+
+**[WRITE: Explain adaptive features in action]**
+
+## Method Comparison
+
+### Overall Performance
+
+```{r method-comparison-table}
+# Create comprehensive comparison table
+# Dataset | MAD σ=5 | MAD σ=10 | MAD σ=15 | Spline | 10X Truth
+
+comparison_data <- data.frame(
+  Dataset = character(),
+  MAD_sigma5 = numeric(),
+  MAD_sigma10 = numeric(),
+  MAD_sigma15 = numeric(),
+  Spline = numeric(),
+  TenX_Truth = numeric()
+)
+
+# kable(comparison_data,
+#       caption = "Table 4: Comprehensive method comparison",
+#       format = "html")
+```
+
+**[WRITE: Which method performs best overall?]**
+
+### Correlation Analysis
+
+```{r correlation-matrix}
+# Create correlation matrix
+# MAD methods vs Spline vs Ground Truth
+```
+
+```{r comparison-plots, fig.cap="Figure 3: Method comparison scatter plots"}
+# Create scatter plots showing:
+# - MAD σ=10 vs 10X Truth
+# - Spline vs 10X Truth
+# - MAD vs Spline
+```
+
+**[WRITE: Interpret correlations]**
+
+### Method Agreement
+
+**[WRITE: Do MAD and Spline agree? Where do they differ?]**
+
+---
+
+# Discussion
+
+## Key Findings
+
+**[WRITE: Summarize your main results]**
+
+1. MAD method performance varies with sigma threshold
+2. Spline method shows [better/worse/similar] performance
+3. Both methods detect [more/fewer] multiplets than 10X ground truth
+4. [Other key findings]
+
+## Comparison to Ground Truth
+
+**[WRITE: Why do your methods differ from 10X?]**
+
+Possible reasons:
+- Different detection philosophies
+- 10X may be conservative
+- Your methods may be more sensitive
+- [Discuss]
+
+## Method Trade-offs
+
+### MAD Method
+**Strengths:**
+- [List based on your results]
+
+**Weaknesses:**
+- [List based on your results]
+
+**Best used when:**
+- [Recommendations]
+
+### Spline Method
+**Strengths:**
+- [List based on your results]
+
+**Weaknesses:**
+- [List based on your results]
+
+**Best used when:**
+- [Recommendations]
+
+## Recommendations for Practitioners
+
+**[WRITE: What should other researchers use?]**
+
+Scenarios:
+- Balanced PDX samples → Use [method]
+- Highly imbalanced samples → Use [method]
+- Conservative detection → Use [method/settings]
+- Sensitive detection → Use [method/settings]
+
+## Limitations
+
+**[WRITE: What are the limitations of your study?]**
+
+- Limited to PDX samples (species mixing)
+- Ground truth only for benchmark datasets
+- [Other limitations]
+
+## Future Directions
+
+**[WRITE: What's next?]**
+
+- Test on more diverse datasets
+- Compare to other methods (Scrublet, DoubletFinder)
+- Develop hybrid approaches
+- [Other ideas]
+
+---
+
+# Conclusions
+
+**[WRITE: Concise summary]**
+
+- We compared two computational approaches for multiplet detection in PDX samples
+- [Key finding 1]
+- [Key finding 2]
+- [Key recommendation]
+
+---
+
+# References
+
+**[ADD REFERENCES]**
+
+---
+
+# Supplementary Materials
+
+## Supplementary Tables
+
+**Table S1:** Complete dataset characteristics
+**Table S2:** Full MAD results (all datasets, all sigmas)
+**Table S3:** Full Spline results with adaptive sizing details
+
+## Supplementary Figures
+
+**Figure S1:** Density overlap plots for all datasets
+**Figure S2:** Region division visualizations for all datasets
+**Figure S3:** MAD density evolution for all datasets
+
+---
+
