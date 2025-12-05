@@ -64,7 +64,7 @@ get_custom_slope <- function(y1, y2, x_max){
 #'
 #' @param df A data frame containing three columns: mouse percent, graft cutoff, and host cutoff. The columns must be in this order.
 #'
-#' @return A vector of assigned classifications (`"GRCh38"`, `"mm10"`, or `"Multiplet"`) based on the input thresholds.
+#' @return A vector of assigned classifications (`"GRCh38"`, `"GRCm39"`, or `"Multiplet"`) based on the input thresholds.
 #' @examples
 #' \dontrun{
 #' df <- data.frame(mouse_percent = runif(100), graft_cut = runif(100), host_cut = runif(100))
@@ -77,9 +77,9 @@ assign_new_call <- function(df){
   for(i in 1:dim(df)[1]){
     #print(df[i,"host_percent"])
     if(df[i,"host_percent"] <= df[i,"graft_cut"])
-    {df[i,"call"] = "GRCh38"}
+    {df[i,"call"] = "Graft"}
     else if(df[i,"host_percent"] >= df[i,"host_cut"])
-    {df[i,"call"] = "mm10"}
+    {df[i,"call"] = "Host"}
     else
     {df[i,"call"] = "Multiplet"}
   }
@@ -114,10 +114,10 @@ find_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10){
   log_max = max(gem_df$totalReadsLog)
   gem_df$graft_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=graft_max, y2=graft_min, x_max=log_max)
   gem_df$host_cutpoint_log <- sapply(gem_df$totalReadsLog, find_log_cutoff, y1=1-graft_max, y2=1-graft_min, x_max=log_max)
-  gem_df$SemiLog_Call <- assign_new_call(gem_df[,c("percentMouse", "graft_cutpoint_log", "host_cutpoint_log")])
-  gem_df$AssignedSpecies_SemiLog <- ifelse(gem_df$SemiLog_Call == "GRCh38", "Human",
-                                   ifelse(gem_df$SemiLog_Call == "mm10", "Mouse",
-                                          ifelse(gem_df$SemiLog_Call == "Multiplet", "Multiplet", NA)))
+  gem_df$AssignedSpecies_SemiLog <- assign_new_call(gem_df[,c("percentHost", "graft_cutpoint_log", "host_cutpoint_log")])
+  #gem_df$AssignedSpecies_SemiLog <- ifelse(gem_df$SemiLog_Call == "GRCh38", "Human",
+  #                                 ifelse(gem_df$SemiLog_Call == "GRCm39", "Mouse",
+  #                                        ifelse(gem_df$SemiLog_Call == "Multiplet", "Multiplet", NA)))
 
   return(gem_df)
 }
@@ -156,7 +156,7 @@ plot_semilog_threshold <- function(gem_df, graft_max=.25, graft_min=.10, ...){
 
   # Check if 'w' is missing and set a default value if it is
   if (!"colormapping" %in% names(args)) {
-    args$colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5))
+    args$colormapping <- c("Graft" = alpha("royalblue", 0.5), "Host" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5))
   }
 
   if(!"color" %in% names(args)){

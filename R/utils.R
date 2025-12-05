@@ -1,35 +1,78 @@
 #' @title Prepare GEM Counts for Analysis and Plotting
-#' @description This function takes a data frame of read counts from a 10X GEM file and adds additional columns for analysis and plotting.
-#' @param gem_df A data frame containing read counts with columns `barcode`, `GRCh38`, `mm10` and `call`.
+#' @description This function takes a data frame of read counts from a GEM Classification file and adds additional columns for analysis and plotting.
+#' It allows for dynamic column names and classification labels, generalized for PDX (Graft vs Host).
+#'
+#' @param gem_df A data frame containing read counts.
+#' @param graft_col Character. The name of the column containing Graft read counts. Default is "GRCh38".
+#' @param host_col Character. The name of the column containing Host read counts. Default is "GRCm39".
+#' @param call_col Character. The name of the column containing the classification call. Default is "call".
+#' @param graft_label Character. The value in `call_col` that identifies a Graft cell. Default is "GRCh38".
+#' @param host_label Character. The value in `call_col` that identifies a Host cell. Default is "GRCm39".
+#' @param multiplet_label Character. The value in `call_col` that identifies a Multiplet. Default is "Multiplet".
+#' @param suffix Character. The suffix to append to the "AssignedSpecies_" column name. Default is "10X".
+#'
 #' @return A data frame with the following additional columns:
 #' \itemize{
-#'   \item \code{HumanDiff}: Difference between human (GRCh38) and mouse (mm10) read counts.
-#'   \item \code{MouseDiff}: Difference between mouse (mm10) and human (GRCh38) read counts.
-#'   \item \code{percentMouse}: Proportion of reads that map to mouse (mm10).
-#'   \item \code{totalReads}: Total number of reads (sum of GRCh38 and mm10).
+#'   \item \code{GraftDiff}: Difference between graft and host read counts.
+#'   \item \code{HostDiff}: Difference between host and graft read counts.
+#'   \item \code{percentHost}: Proportion of reads that map to host.
+#'   \item \code{totalReads}: Total number of reads (sum of graft and host counts).
 #'   \item \code{totalReadsLog}: Logarithm of the total number of reads.
+#'   \item \code{AssignedSpecies_<suffix>}: Normalized classification ("Graft", "Host", "Multiplet", or NA).
 #' }
 #' @examples
 #' \dontrun{
-#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), mm10 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
+#' # Example with default names
+#' gem_df <- data.frame(barcode = c("bc1", "bc2"), GRCh38 = c(100, 10), GRCm39 = c(10, 200), call = c("GRCh38", "GRCm39"))
 #' result <- prep_gem_counts(gem_df)
-#' print(result)
+#'
+#' # Example with custom names
+#' gem_df_custom <- data.frame(barcode = c("bc1"), g_reads = c(100), h_reads = c(50), assign = c("Graft"))
+#' result <- prep_gem_counts(gem_df_custom, graft_col="g_reads", host_col="h_reads", call_col="assign", graft_label="Graft")
 #' }
 #' @export
-prep_gem_counts <- function(gem_df){
-  gem_df$HumanDiff <- gem_df$GRCh38 - gem_df$mm10
-  gem_df$MouseDiff <- gem_df$mm10 - gem_df$GRCh38
-  gem_df$percentMouse <- gem_df$mm10/(gem_df$mm10 + gem_df$GRCh38)
-  gem_df$totalReads <- gem_df$mm10 + gem_df$GRCh38
-  gem_df$totalReadsLog <- log(gem_df$mm10 + gem_df$GRCh38)
-  gem_df$AssignedSpecies_10X <- ifelse(gem_df$call == "GRCh38", "Human",
-                                   ifelse(gem_df$call == "mm10", "Mouse",
-                                          ifelse(gem_df$call == "Multiplet", "Multiplet", NA)))
-
+prep_gem_counts <- function(gem_df, 
+                            graft_col = "GRCh38", 
+                            host_col = "GRCm39", 
+                            call_col = "call",
+                            graft_label = "GRCh38", 
+                            host_label = "GRCm39", 
+                            multiplet_label = "Multiplet",
+                            suffix = "10X"){
+  
+  # Ensure the specified columns exist in the dataframe
+  required_cols <- c(graft_col, host_col, call_col)
+  missing_cols <- required_cols[!required_cols %in% names(gem_df)]
+  if (length(missing_cols) > 0) {
+    stop(paste("The following required columns are missing from gem_df:", paste(missing_cols, collapse = ", ")))
+  }
+  
+  # Extract vectors for calculation to make formula cleaner
+  g_counts <- gem_df[[graft_col]]
+  h_counts <- gem_df[[host_col]]
+  calls <- gem_df[[call_col]]
+  
+  # Perform Calculations
+  gem_df$GraftDiff <- g_counts - h_counts
+  gem_df$HostDiff <- h_counts - g_counts
+  
+  # Calculate total reads
+  gem_df$totalReads <- g_counts + h_counts
+  
+  # Calculate percentage (handle potential division by zero if totalReads is 0)
+  gem_df$percentHost <- ifelse(gem_df$totalReads > 0, h_counts / gem_df$totalReads, 0)
+  
+  # Log transform (log(0) is -Inf, usually acceptable in R, or add pseudocount if needed)
+  gem_df$totalReadsLog <- log(gem_df$totalReads)
+  
+  # Assign standardized species labels based on dynamic input values
+  assign_col_name <- paste0("AssignedSpecies_", suffix)
+  gem_df[[assign_col_name]] <- ifelse(calls == graft_label, "Graft",
+                                      ifelse(calls == host_label, "Host",
+                                             ifelse(calls == multiplet_label, "Multiplet", NA)))
+  
   return(gem_df)
 }
-
-
 
 
 
@@ -149,4 +192,45 @@ evaluate_classification <- function(df, gold_standard_col) {
   }))
 
   return(results_df)
+}
+
+
+
+
+
+
+#' @title Intersect and Subset Classification Data
+#' @description Finds the intersection of barcodes between two data frames based on their row names and subsets them to include only shared cells.
+#' @param df1 First data frame (barcodes must be in row.names).
+#' @param df2 Second data frame (barcodes must be in row.names).
+#' @return A list containing the two subsetted data frames (named df1 and df2).
+#' @examples
+#' \dontrun{
+#' # Ensure data is read with row.names, e.g., read.csv(..., row.names = 1)
+#' data1 <- read.csv("xenocell_classification_sampleA.csv", row.names = 1)
+#' data2 <- read.csv("other_classification_sampleA.csv", row.names = 1)
+#' result <- intersect_and_subset(data1, data2)
+#' data1_clean <- result$df1
+#' data2_clean <- result$df2
+#' }
+#' @export
+intersect_and_subset <- function(df1, df2) {
+  
+  # Find common barcodes using row names
+  common_barcodes <- intersect(rownames(df1), rownames(df2))
+  
+  # Report the intersection size
+  message(paste("Found", length(common_barcodes), "common barcodes between the two datasets."))
+  
+  if (length(common_barcodes) == 0) {
+    warning("No common barcodes found. Returning empty data frames.")
+  }
+  
+  # Subset both data frames to keep only common barcodes
+  # We subset by the character vector of row names directly
+  df1_subset <- df1[common_barcodes, , drop = FALSE]
+  df2_subset <- df2[common_barcodes, , drop = FALSE]
+  
+  # Return a list containing both processed data frames
+  return(list(df1 = df1_subset, df2 = df2_subset))
 }

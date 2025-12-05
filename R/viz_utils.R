@@ -17,7 +17,7 @@
 
 #' @title Linear Percent Scatter Plot
 #' @description This function creates a scatter plot of the percent of total reads that map to a species versus the total library size (UMI count) for each single cell. The axes and colors can be customized.
-#' @param A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
+#' @param A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `GRCm39`, `call`, and additional columns added by `prep_gem_counts()`.
 #' @param Xdata A string specifying the column name for the x-axis data. Default is "totalReads".
 #' @param Ydata A string specifying the column name for the y-axis data. Default is "percentMouse".
 #' @param color A string specifying the column name for the color grouping. Default is "call".
@@ -30,7 +30,7 @@
 #' @return A ggplot object representing the scatter plot.
 #' @examples
 #' \dontrun{
-#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), mm10 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
+#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), GRCm39 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
 #' gem_df <- prep_gem_counts(gem_df)
 #' plot <- linear_percent_scatter(gem_df)
 #' print(plot)
@@ -38,11 +38,11 @@
 #' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
 #' @importFrom scales alpha
 #' @export
-linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percentMouse", color = "AssignedSpecies_10X",
+linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percentHost", color = "AssignedSpecies_10X",
                                    title = "Linear Percent Scatter Plot", umi_cutoff = NA, species_cutoff = NA,
-                                   Xaxislab = "Total UMI", Yaxislab = "Percent Mouse", colormapping = NA){
+                                   Xaxislab = "Total UMI", Yaxislab = "Percent Host", colormapping = NA){
   if(all(is.na(colormapping))){
-    colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))
+    colormapping <- c("Graft" = alpha("royalblue", 0.5), "Host" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))
   }
   p1 <- ggplot(gem_df, aes_string(x = Xdata, y = Ydata, color = color)) +
     geom_point() +  # Add points
@@ -70,7 +70,7 @@ linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percen
 
 #' @title Semi-Log Percent Scatter Plot
 #' @description This function creates a scatter plot of the percent of total reads that map to a species versus the log-transformed total library size (UMI count) for each single cell. The axes and colors can be customized.
-#' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
+#' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `GRCm39`, `call`, and additional columns added by `prep_gem_counts()`.
 #' @param Xdata A string specifying the column name for the x-axis data. Default is "totalReadsLog".
 #' @param Ydata A string specifying the column name for the y-axis data. Default is "percentMouse".
 #' @param color A string specifying the column name for the color grouping. Default is "call".
@@ -83,7 +83,7 @@ linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percen
 #' @return A ggplot object representing the scatter plot.
 #' @examples
 #' \dontrun{
-#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), mm10 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
+#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), GRCm39 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
 #' gem_df <- prep_gem_counts(gem_df)
 #' plot <- semilog_percent_scatter(gem_df)
 #' print(plot)
@@ -91,12 +91,12 @@ linear_percent_scatter <- function(gem_df, Xdata = "totalReads", Ydata = "percen
 #' @importFrom ggplot2 ggplot aes_string geom_point scale_color_manual labs theme_minimal geom_vline geom_hline
 #' @importFrom scales alpha
 #' @export
-semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "percentMouse", color = "AssignedSpecies_10X",
+semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "percentHost", color = "AssignedSpecies_10X",
                                    title = "Semi-Log Percent Scatter Plot", umi_cutoff = NA, species_cutoff = NA,
-                                   Xaxislab = "Total UMI (Natural Log)", Yaxislab = "Percent Mouse", colormapping = NA){
+                                   Xaxislab = "Total UMI (Natural Log)", Yaxislab = "Percent Host", colormapping = NA){
 
   if(all(is.na(colormapping))){
-    colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))
+    colormapping <- c("Graft" = alpha("royalblue", 0.5), "Host" = alpha("forestgreen", 0.3), "Multiplet" = alpha("gold", 1))
   }
 
   p2 <- ggplot(gem_df, aes_string(x = Xdata, y = Ydata, color = color)) +
@@ -125,9 +125,11 @@ semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "pe
 
 #' @title Species Density Plot
 #' @description This function creates a density plot of aligned read counts for a specified assigned species. The data frame must be processed by `prep_gem_counts()` first.
-#' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
+#' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `GRCm39`, `call`, and additional columns added by `prep_gem_counts()`.
 #' @param assigned_species A string specifying the assigned species to plot. Default is "Human".
 #' @param assigned_species_col A string specifying the column name that contains the species assignments for plotting. Default is "AssignedSpecies_10X".
+#' @param graft_col A string specifying the column name for Graft read counts. Default is "GRCh38".
+#' @param host_col A string specifying the column name for Host read counts. Default is "GRCm39".
 #' @param refGenome_linecol A named vector specifying the line colors for the reference genomes. Default is NA, which uses predefined colors.
 #' @param refGenome_fillcol A named vector specifying the fill colors for the reference genomes. Default is NA, which uses predefined colors.
 #' @param title A string specifying the title of the plot. This will be concatenated with the `assigned_species` string for the full title. Default is "Assigned Species".
@@ -136,7 +138,7 @@ semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "pe
 #' @return A ggplot object representing the density plot.
 #' @examples
 #' \dontrun{
-#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), mm10 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
+#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), GRCm39 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
 #' gem_df <- prep_gem_counts(gem_df)
 #' plot <- species_density_plot(gem_df, assigned_species = "Human")
 #' print(plot)
@@ -146,21 +148,23 @@ semilog_percent_scatter <- function(gem_df, Xdata = "totalReadsLog", Ydata = "pe
 #' @importFrom dplyr %>%
 #' @importFrom scales alpha
 #' @export
-species_density_plot <- function(gem_df, assigned_species = "Human",
+species_density_plot <- function(gem_df, assigned_species = "Graft",
                                   assigned_species_col = "AssignedSpecies_10X",
+                                  graft_col = "GRCh38", 
+                                  host_col = "GRCm39",
                                   refGenome_linecol = NA, refGenome_fillcol = NA,
                                   title = "Assigned Species",
                                   Xaxislab = "Aligned Read Counts (Natural Log)",
                                   Yaxislab = "Cell Density"){
 
-  gem_df_melt <- as.data.frame(reshape2::melt(gem_df[,c("GRCh38", "mm10", assigned_species_col)]))
+  gem_df_melt <- as.data.frame(reshape2::melt(gem_df[,c(graft_col, host_col, assigned_species_col)]))
   names(gem_df_melt) <- c(assigned_species_col, "RefGenome", "AlignedCount")
 
   if(all(is.na(refGenome_linecol))){
-    refGenome_linecol <- c("GRCh38" = "royalblue", "mm10" = "forestgreen")
+    refGenome_linecol <- setNames(c("royalblue", "forestgreen"), c(graft_col, host_col))
   }
   if(all(is.na(refGenome_fillcol))){
-    refGenome_fillcol <- c("GRCh38" = "royalblue", "mm10" = "forestgreen")
+    refGenome_fillcol <- setNames(c("royalblue", "forestgreen"), c(graft_col, host_col))
   }
 
   title <- paste(title, ":", assigned_species)
@@ -182,7 +186,7 @@ species_density_plot <- function(gem_df, assigned_species = "Human",
 
 #' @title GEM Classification Summary
 #' @description This function creates a summary plot of GEM classification, including linear and semi-log scatter plots and density plots for human, mouse, and multiplet assigned species. The data frame must be processed by `prep_gem_counts()` first.
-#' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `mm10`, `call`, and additional columns added by `prep_gem_counts()`.
+#' @param gem_df A data frame that has been processed by `prep_gem_counts()`, containing read counts with columns `barcode`, `GRCh38`, `GRCm39`, `call`, and additional columns added by `prep_gem_counts()`.
 #' @param method A string specifying the method for plotting. Options are "default" or "SemiLog". Default is "default". If the `assigned_species_col` helper parameter is not specified, the `AssignedSpecies_10X` column will be used by default. This parameter will also set the color that the scatter plots use.
 #' @param ncol An integer specifying the number of columns in the grid layout. Default is 2.
 #' @param main_title A string specifying the title of the summary plot. Default is "GEM Classification Summary".
@@ -191,7 +195,7 @@ species_density_plot <- function(gem_df, assigned_species = "Human",
 #' @return A grid of ggplot objects representing the summary plot.
 #' @examples
 #' \dontrun{
-#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), mm10 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
+#' gem_df <- data.frame(barcode = c("AAACCAAAGCCATGCG-1", "AAACCCGCAATACTCT-1", "AAACGAATCAATGTGT-1"), GRCh38 = c(100, 200, 300), GRCm39 = c(50, 10, 250), call = c("GRCh38", "GRCh38", "Multiplet"))
 #' gem_df <- prep_gem_counts(gem_df)
 #' summary_plot <- gem_classification_summary(gem_df)
 #' print(summary_plot)
@@ -215,6 +219,7 @@ gem_classification_summary <- function(gem_df, method="default", ncol=2, main_ti
   if("assigned_species_col" %in% names(args)){ scatter_args$color <- args$assigned_species_col }
 
   density_args <- args[names(args) %in% c("assigned_species","assigned_species_col",
+                                          "host_col", "graft_col",
                                           "refGenome_linecol", "refGenome_fillcol",
                                           "title","Xaxislab","Yaxislab")]
   print(density_args)
@@ -223,23 +228,23 @@ gem_classification_summary <- function(gem_df, method="default", ncol=2, main_ti
   if(method == "default"){
     p1 <- do.call(linear_percent_scatter, c(list(gem_df), scatter_args))
     p2 <- do.call(semilog_percent_scatter, c(list(gem_df), scatter_args))
-    p3_human <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Human"), density_args))
-    p3_mouse <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Mouse"), density_args))
+    p3_human <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Graft"), density_args))
+    p3_mouse <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Host"), density_args))
     p3_multiplet <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Multiplet"), density_args))
   }
   else if(method == "SemiLog"){
     # Change default parameters to SemiLog specific if they are not specified.
-    if(!"colormapping" %in% names(scatter_args)) { scatter_args$colormapping <- c("Human" = alpha("royalblue", 0.5), "Mouse" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5)) }
+    if(!"colormapping" %in% names(scatter_args)) { scatter_args$colormapping <- c("Graft" = alpha("royalblue", 0.5), "Host" = alpha("red3", 0.5), "Multiplet" = alpha("purple", 0.5)) }
     if(!"color" %in% names(scatter_args)){ scatter_args$color <- "AssignedSpecies_SemiLog" }
     if(!"assigned_species_col" %in% names(density_args)){ density_args$assigned_species_col <- "AssignedSpecies_SemiLog" }
     if(!"title" %in% names(density_args)){ density_args$title <- "Assigned SemiLog Species" }
-    if(!"refGenome_linecol" %in% names(density_args)){ density_args$refGenome_linecol <- c("GRCh38" = "royalblue", "mm10" = "red")}
-    if(!"refGenome_fillcol" %in% names(density_args)){ density_args$refGenome_fillcol <- c("GRCh38" = "royalblue", "mm10" = "red")}
-
+    if(!"refGenome_linecol" %in% names(density_args)){ density_args$refGenome_linecol <- setNames(c("royalblue", "red"), c(args$graft_col, args$host_col))}
+    if(!"refGenome_fillcol" %in% names(density_args)){ density_args$refGenome_fillcol <- setNames(c("royalblue", "red"), c(args$graft_col, args$host_col))}
+    
     p1 <- do.call(linear_percent_scatter, c(list(gem_df), scatter_args))
     p2 <- do.call(plot_semilog_threshold, c(list(gem_df), scatter_args))
-    p3_human <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Human"), density_args))
-    p3_mouse <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Mouse"), density_args))
+    p3_human <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Graft"), density_args))
+    p3_mouse <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Host"), density_args))
     p3_multiplet <- do.call(species_density_plot, c(list(gem_df,assigned_species = "Multiplet"), density_args))
   }
 

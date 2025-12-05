@@ -26,18 +26,20 @@ source("R/method_semilog_linear.R")
 gem_data <- read.delim("example_data/VCU-BC-043_StandardMouse_gem_classification.csv", header = TRUE, row.names = 1, sep=",")
 
 ## Preprocess gem df
-gem_df <- prep_gem_counts(gem_data)
+gem_df <- prep_gem_counts(result$df1, graft_col="GRCh38", host_col="mm10", call_col="call", 
+                          graft_label="GRCh38", host_label="mm10")
 
 ## Generate summary plot before
-summary_plot <- gem_classification_summary(gem_df)
+summary_plot <- gem_classification_summary(gem_df, graft_col="GRCh38", host_col="mm10")
 
 ## Find Semilog Threshold
 gem_df <- find_semilog_threshold(gem_df, graft_max=.25, graft_min=.10)
 
-summary_plot2 <- gem_classification_summary(gem_df, method="SemiLog", assigned_species_col="AssignedSpecies_SemiLog")
+summary_plot3 <- gem_classification_summary(gem_df, method="SemiLog", graft_col="GRCh38", host_col="mm10", assigned_species_col="AssignedSpecies_SemiLog")
 
 ## Plot Semilog scatter
 my_plot <- plot_semilog_threshold(gem_df, graft_max=.25, graft_min=.10, color="AssignedSpecies_SemiLog")
+
 
 ## Evaluate the classifications compared to 10X
 metrics_df <- evaluate_classification(gem_df, "AssignedSpecies_10X")
